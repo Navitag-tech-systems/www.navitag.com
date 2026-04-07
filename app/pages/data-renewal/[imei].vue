@@ -87,8 +87,20 @@ async function checkDevice() {
 async function fetchProducts(model: string) {
   productsLoading.value = true
   try {
+    const handle = `${model.toLowerCase()}-data-plan`
+    const catRes = await $fetch<{ product_categories: any[] }>(`${MEDUSA_BACKEND_URL}/store/product-categories`, {
+      params: { handle },
+      headers: {
+        'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
+      },
+    })
+    const categoryId = catRes.product_categories?.[0]?.id
+    if (!categoryId) {
+      products.value = []
+      return
+    }
     const res = await $fetch<{ products: any[] }>(`${MEDUSA_BACKEND_URL}/store/products`, {
-      params: { handle: `${model.toLowerCase()}-data-plan` },
+      params: { category_id: categoryId },
       headers: {
         'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
       },
