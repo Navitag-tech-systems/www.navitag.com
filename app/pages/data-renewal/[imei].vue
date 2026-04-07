@@ -100,7 +100,7 @@ async function fetchProducts(model: string) {
       return
     }
     const res = await $fetch<{ products: any[] }>(`${MEDUSA_BACKEND_URL}/store/products`, {
-      params: { category_id: categoryId, fields: '+categories' },
+      params: { category_id: categoryId, fields: '*variants.calculated_price' },
       headers: {
         'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
       },
@@ -119,11 +119,10 @@ const plans = computed(() => {
   const durationOrder = ['3 months', '6 months', '12 months']
 
   return products.value.map((product) => {
-    const category = product.categories?.[0]?.name
-      || product.collection?.title
-      || product.title
-
-    const isBasic = /basic/i.test(category) || /basic/i.test(product.title)
+    const tags = (product.tags || []).map((t: any) => t.value || '')
+    const tier = tags.find((v: string) => /^pro$/i.test(v)) ? 'Pro'
+      : tags.find((v: string) => /^basic$/i.test(v)) ? 'Basic'
+      : 'Basic'
 
     const sortedVariants = [...(product.variants || [])].sort((a, b) => {
       const ai = durationOrder.findIndex((d) => a.title?.toLowerCase().includes(d))
@@ -135,7 +134,7 @@ const plans = computed(() => {
       id: product.id,
       title: product.title,
       description: product.description,
-      tier: isBasic ? 'Basic' : 'Pro',
+      tier,
       image: product.thumbnail || product.images?.[0]?.url || null,
       variants: sortedVariants,
     }
@@ -143,13 +142,21 @@ const plans = computed(() => {
 })
 
 function formatPrice(variant: any): string {
-  if (!variant?.prices?.length) return '—'
-  const price = variant.prices[0]
-  const amount = price.amount / 100
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: price.currency_code?.toUpperCase() || 'USD',
-  }).format(amount)
+  const calc = variant?.calculated_price
+  if (calc?.calculated_amount != null) {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: calc.currency_code?.toUpperCase() || 'USD',
+    }).format(calc.calculated_amount)
+  }
+  if (variant?.prices?.length) {
+    const price = variant.prices[0]
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: price.currency_code?.toUpperCase() || 'USD',
+    }).format(price.amount / 100)
+  }
+  return '—'
 }
 
 function durationLabel(variant: any): string {
@@ -161,7 +168,7 @@ function durationLabel(variant: any): string {
 }
 
 function selectVariant(productId: string, variantId: string) {
-  selectedVariants.value[productId] = variantId
+  selectedVariants.value = { [productId]: variantId }
 }
 
 function onLoginSuccess() {
