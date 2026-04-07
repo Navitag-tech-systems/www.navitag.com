@@ -100,7 +100,7 @@ async function fetchProducts(model: string) {
       return
     }
     const res = await $fetch<{ products: any[] }>(`${MEDUSA_BACKEND_URL}/store/products`, {
-      params: { category_id: categoryId },
+      params: { category_id: categoryId, fields: '+categories' },
       headers: {
         'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
       },
@@ -139,7 +139,7 @@ const plans = computed(() => {
       image: product.thumbnail || product.images?.[0]?.url || null,
       variants: sortedVariants,
     }
-  }).sort((a, b) => (a.tier === 'Basic' ? -1 : 1))
+  }).sort((a, b) => (a.tier === 'Pro' ? -1 : 1))
 })
 
 function formatPrice(variant: any): string {
@@ -234,7 +234,9 @@ function onLoginSuccess() {
             v-for="plan in plans"
             :key="plan.id"
             class="bg-white rounded-2xl border-2 overflow-hidden transition-shadow"
-            :class="plan.tier === 'Pro' ? 'border-navitag-blue shadow-lg shadow-navitag-blue/10' : 'border-gray-100 shadow-sm'"
+            :class="[
+              plan.tier === 'Pro' ? 'border-navitag-blue shadow-lg shadow-navitag-blue/10 sm:order-2' : 'border-gray-100 shadow-sm sm:order-1'
+            ]"
           >
             <!-- Plan Header -->
             <div
@@ -297,7 +299,7 @@ function onLoginSuccess() {
                   ? 'bg-navitag-blue text-white hover:bg-opacity-90 shadow-lg shadow-navitag-blue/20'
                   : 'bg-gray-900 text-white hover:bg-gray-800'"
               >
-                Select {{ plan.tier }} Plan
+                Buy Plan
               </button>
             </div>
           </div>
