@@ -107,8 +107,8 @@ onMounted(() => fetchProducts())
           <!-- Thumbnail -->
           <div class="aspect-square bg-gray-100 flex items-center justify-center">
             <img
-              v-if="product.thumbnail"
-              :src="product.thumbnail"
+              v-if="product.thumbnail || product.images?.length"
+              :src="product.thumbnail || product.images[0].url"
               :alt="product.title"
               class="w-full h-full object-cover"
             >
