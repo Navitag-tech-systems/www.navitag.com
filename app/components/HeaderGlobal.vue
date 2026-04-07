@@ -1,8 +1,26 @@
 <script setup lang="ts">
+import { onAuthStateChanged, signOut } from 'firebase/auth'
+
 const mobileMenuOpen = ref(false)
+const isLoggedIn = ref(false)
 
 function closeMobileMenu() {
   mobileMenuOpen.value = false
+}
+
+onMounted(() => {
+  const { auth } = useFirebase()
+  onAuthStateChanged(auth, (user) => {
+    isLoggedIn.value = !!user
+  })
+})
+
+async function logout() {
+  const { auth } = useFirebase()
+  await signOut(auth)
+  localStorage.removeItem('medusa_jwt')
+  isLoggedIn.value = false
+  navigateTo('/')
 }
 </script>
 
@@ -20,6 +38,11 @@ function closeMobileMenu() {
         <a href="#the-app" class="hover:text-navitag-blue transition">The App</a>
         <a href="#global" class="hover:text-navitag-blue transition">Our Global Footprint</a>
         <a href="#contact" class="px-5 py-2.5 rounded-full bg-navitag-blue text-white text-sm font-semibold hover:bg-opacity-90 transition">Contact Us</a>
+        <ClientOnly>
+          <button v-if="isLoggedIn" class="text-gray-500 hover:text-red-500 transition" @click="logout" title="Logout">
+            <i class="fas fa-sign-out-alt fa-lg"></i>
+          </button>
+        </ClientOnly>
       </div>
 
       <button class="md:hidden text-gray-900" @click="mobileMenuOpen = !mobileMenuOpen">
@@ -34,6 +57,11 @@ function closeMobileMenu() {
         <a href="#the-app" class="block" @click="closeMobileMenu">The App</a>
         <a href="#global" class="block" @click="closeMobileMenu">Our Global Footprint</a>
         <a href="#contact" class="block px-5 py-2.5 text-center rounded-full bg-navitag-blue text-white text-sm font-semibold hover:bg-opacity-90 transition" @click="closeMobileMenu">Contact Us</a>
+        <ClientOnly>
+          <button v-if="isLoggedIn" class="block text-red-500" @click="logout(); closeMobileMenu()">
+            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+          </button>
+        </ClientOnly>
       </div>
     </div>
   </header>

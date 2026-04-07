@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { onAuthStateChanged, signOut } from 'firebase/auth'
+
 const mobileMenuOpen = ref(false)
+const isLoggedIn = ref(false)
 const route = useRoute()
 
 function closeMobileMenu() {
@@ -7,6 +10,21 @@ function closeMobileMenu() {
 }
 
 const isDistribution = computed(() => route.path === '/ph/distribution')
+
+onMounted(() => {
+  const { auth } = useFirebase()
+  onAuthStateChanged(auth, (user) => {
+    isLoggedIn.value = !!user
+  })
+})
+
+async function logout() {
+  const { auth } = useFirebase()
+  await signOut(auth)
+  localStorage.removeItem('medusa_jwt')
+  isLoggedIn.value = false
+  navigateTo('/')
+}
 </script>
 
 <template>
@@ -26,6 +44,11 @@ const isDistribution = computed(() => route.path === '/ph/distribution')
         <NuxtLink to="/ph/distribution" :class="isDistribution ? 'text-navitag-blue font-bold' : 'hover:text-navitag-blue'" class="transition">Where to Buy</NuxtLink>
         <NuxtLink to="/" class="text-gray-500 hover:text-gray-900 transition"><i class="fas fa-globe mr-1"></i> Global Site</NuxtLink>
         <a href="#contact" class="px-5 py-2.5 rounded-full bg-navitag-blue text-white text-sm font-semibold hover:bg-opacity-90 transition">Contact Local Sales</a>
+        <ClientOnly>
+          <button v-if="isLoggedIn" class="text-gray-500 hover:text-red-500 transition" @click="logout" title="Logout">
+            <i class="fas fa-sign-out-alt fa-lg"></i>
+          </button>
+        </ClientOnly>
       </div>
 
       <button class="md:hidden text-gray-900" @click="mobileMenuOpen = !mobileMenuOpen">
@@ -40,6 +63,11 @@ const isDistribution = computed(() => route.path === '/ph/distribution')
         <NuxtLink to="/ph/distribution" class="block" :class="isDistribution ? 'text-navitag-blue font-bold' : ''" @click="closeMobileMenu">Where to Buy</NuxtLink>
         <NuxtLink to="/" class="block text-gray-500" @click="closeMobileMenu"><i class="fas fa-globe mr-1"></i> Return to Global Site</NuxtLink>
         <a href="#contact" class="block px-5 py-2.5 text-center rounded-full bg-navitag-blue text-white text-sm font-semibold hover:bg-opacity-90 transition" @click="closeMobileMenu">Contact Local Sales</a>
+        <ClientOnly>
+          <button v-if="isLoggedIn" class="block text-red-500" @click="logout(); closeMobileMenu()">
+            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+          </button>
+        </ClientOnly>
       </div>
     </div>
   </header>

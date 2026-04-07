@@ -7,14 +7,24 @@ The next-generation front-facing website for the Navitag brand, replacing www-v2
 ### Completed
 - [X] Create a new Nuxt 4 project
 - [X] Upload to GitHub
-- [X] Extract Navitag brand colors from www-v2 (Blue `#0076F5`, Orange `#F28C38`)
+- [X] Extract Navitag brand colors from www-v2 (Blue `#0076F5`, Orange `#F28C38`, Background `#F7F4EF`)
 - [X] Migrate all www-v2 content into www-v3 (Global landing, PH landing, PH distribution, Privacy Policy)
 - [X] Setup Firebase Authentication and Analytics (client-side plugin + composable)
 - [X] Setup shared layouts and reusable header/footer components (Global + PH)
+- [X] Login page with email/password, Google, Facebook, Apple providers
+- [X] Signup page with password validation (8+ chars, uppercase, number, special char)
+- [X] Reusable LoginOverlay component (full-page modal, no redirect)
+- [X] Product test page (`/test-products`) fetching from Medusa backend
+- [X] Data renewal page (`/data-renewal/:imei`) with device lookup via Unified API + Medusa plan display
+- [X] `/shop` redirect to `/ph/distribution`
 
 ### TODO
+- [ ] Fix CORS for Medusa token exchange on localhost (backend needs `localhost` in allowed origins, or use Nuxt server proxy)
 - [ ] Build reusable ecom components and/or composables (product search, catalog view)
 - [ ] Setup ecommerce storefront at /shop with MedusaJS backend
+
+### Known Issues
+- Medusa token exchange (`POST /auth/customer/firebase`) fails on localhost due to CORS — backend only allows `*.navitag.com` origins
 
 ---
 
@@ -47,8 +57,11 @@ The next-generation front-facing website for the Navitag brand, replacing www-v2
 | `/privacy-policy` | Global privacy policy (Facebook Login compliance) |
 | `/ph` | Philippines / SEA / APAC regional landing page |
 | `/ph/distribution` | Where to buy - official stores & installation partners |
-| `/shop` | JS logic page redirecting to region/country-specific store |
-| `/shop/global` | Global ecommerce store (MedusaJS) |
+| `/shop` | Redirects to `/ph/distribution` |
+| `/login` | Login page (email/password, Google, Facebook, Apple) |
+| `/signup` | Signup page with password requirements |
+| `/test-products` | Product test page — fetches and displays Medusa products |
+| `/data-renewal/:imei` | Device lookup + data renewal plans (requires auth) |
 
 ---
 
@@ -60,7 +73,8 @@ app/
 │   ├── HeaderGlobal.vue      # Sticky nav for global pages
 │   ├── FooterGlobal.vue      # Footer for global pages
 │   ├── HeaderPh.vue          # Sticky nav for PH/SEA pages
-│   └── FooterPh.vue          # Footer for PH/SEA pages
+│   ├── FooterPh.vue          # Footer for PH/SEA pages
+│   └── LoginOverlay.vue      # Reusable full-page login modal
 ├── composables/
 │   └── useFirebase.ts        # Firebase auth/analytics composable
 ├── layouts/
@@ -68,14 +82,34 @@ app/
 │   └── ph.vue                # PH layout (HeaderPh + FooterPh)
 ├── pages/
 │   ├── index.vue             # Global landing page
+│   ├── login.vue             # Login page
+│   ├── signup.vue            # Signup page
 │   ├── privacy-policy.vue    # Privacy policy
+│   ├── shop.vue              # Redirect to /ph/distribution
+│   ├── test-products.vue     # Medusa product test page
+│   ├── data-renewal/
+│   │   └── [imei].vue        # Device lookup + renewal plans
 │   └── ph/
 │       ├── index.vue         # PH regional landing page
 │       └── distribution.vue  # Where to buy page
 ├── plugins/
 │   └── firebase.client.ts    # Firebase initialization (client-side only)
+├── variables.ts              # API URLs and keys
 └── app.vue                   # Root app component
 ```
+
+---
+
+## API Backends
+
+| Service | URL | Purpose |
+|---|---|---|
+| **Medusa Store API** | `shopapi.navitag.com` | Ecommerce (products, carts, orders) |
+| **Unified API** | `api.navitag.net/v1` | Device inventory, data renewal |
+
+### Auth Flows
+- **Medusa**: Firebase ID token → `POST /auth/customer/firebase` → Medusa JWT (24hr) → used in `Authorization` header for `/store/*` endpoints
+- **Unified API**: Firebase ID token directly in `Authorization: Bearer {idToken}` header
 
 ---
 
@@ -85,6 +119,7 @@ app/
 |---|---|---|
 | **Navitag Blue** | `#0076F5` | Primary brand color, CTAs, links, headings |
 | **Navitag Orange** | `#F28C38` | Secondary/accent color, highlights, product badges |
+| **Navitag Background** | `#F7F4EF` | Theme background color |
 
 ---
 
