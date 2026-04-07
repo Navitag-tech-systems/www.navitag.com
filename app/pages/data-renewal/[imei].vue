@@ -88,7 +88,7 @@ async function fetchProducts(model: string) {
   productsLoading.value = true
   try {
     const res = await $fetch<{ products: any[] }>(`${MEDUSA_BACKEND_URL}/store/products`, {
-      params: { catalog: model },
+      params: { handle: `${model.toLowerCase()}-data-plan` },
       headers: {
         'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
       },
@@ -186,61 +186,19 @@ function onLoginSuccess() {
 
       <!-- Device Result -->
       <div v-if="device" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="p-6 border-b border-gray-100 flex items-center gap-4">
+        <div class="p-6 flex items-center gap-4">
           <div class="w-12 h-12 rounded-full bg-navitag-blue bg-opacity-10 flex items-center justify-center">
             <i class="fas fa-satellite-dish text-navitag-blue fa-lg"></i>
           </div>
-          <div>
-            <h2 class="font-bold text-gray-950 text-lg">{{ device.brand }} {{ device.model }}</h2>
-            <p class="text-sm text-gray-500 font-mono">IMEI: {{ device.imei }}</p>
+          <div class="flex-1">
+            <h2 class="font-bold text-gray-950 text-lg">{{ device.model }}</h2>
+            <p class="text-sm text-gray-500">{{ device.ref1 || '—' }}</p>
           </div>
-        </div>
-
-        <div class="p-6 grid sm:grid-cols-2 gap-4 text-sm">
-          <div class="space-y-3">
-            <div>
-              <p class="text-gray-400 text-xs uppercase font-medium">SIM Provider</p>
-              <p class="text-gray-900 font-medium">{{ device.sim_provider || '—' }}</p>
-            </div>
-            <div>
-              <p class="text-gray-400 text-xs uppercase font-medium">SIM ICCID</p>
-              <p class="text-gray-900 font-mono text-xs">{{ device.sim_iccid || '—' }}</p>
-            </div>
-            <div>
-              <p class="text-gray-400 text-xs uppercase font-medium">SIM Number</p>
-              <p class="text-gray-900 font-medium">{{ device.sim_number || '—' }}</p>
-            </div>
-            <div>
-              <p class="text-gray-400 text-xs uppercase font-medium">Distribution Channel</p>
-              <p class="text-gray-900 font-medium capitalize">{{ device.distribution_channel || '—' }}</p>
-            </div>
-          </div>
-
-          <div class="space-y-3">
-            <div>
-              <p class="text-gray-400 text-xs uppercase font-medium">Server</p>
-              <p class="text-gray-900 font-medium">{{ device.server_type || '—' }}</p>
-            </div>
-            <div>
-              <p class="text-gray-400 text-xs uppercase font-medium">Server URL</p>
-              <p class="text-gray-900 font-mono text-xs">{{ device.server_url || '—' }}</p>
-            </div>
-            <div>
-              <p class="text-gray-400 text-xs uppercase font-medium">Registered</p>
-              <p class="text-gray-900 font-medium">{{ device.create_at || '—' }}</p>
-            </div>
-            <div>
-              <p class="text-gray-400 text-xs uppercase font-medium">Expiration</p>
-              <p class="font-medium" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">
-                {{ device.expiration || '—' }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="device.preloaded_months" class="px-6 pb-6">
-          <div class="p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm text-center">
-            <i class="fas fa-check-circle mr-1"></i> {{ device.preloaded_months }} month{{ device.preloaded_months > 1 ? 's' : '' }} preloaded
+          <div class="text-right">
+            <p class="text-gray-400 text-xs uppercase font-medium">Expiration</p>
+            <p class="font-semibold text-sm" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">
+              {{ device.expiration || '—' }}
+            </p>
           </div>
         </div>
       </div>
@@ -248,7 +206,7 @@ function onLoginSuccess() {
       <!-- Renewal Plans -->
       <div v-if="device" class="mt-10">
         <h2 class="text-xl font-extrabold text-gray-950 mb-2">Choose a Data Plan</h2>
-        <p class="text-sm text-gray-500 mb-6">Select a plan to renew connectivity for your <strong>{{ device.brand }} {{ device.model }}</strong>.</p>
+        <p class="text-sm text-gray-500 mb-6">Select a plan to renew connectivity for your <strong>{{ device.model }}</strong>.</p>
 
         <div v-if="productsLoading" class="text-center py-10">
           <i class="fas fa-spinner fa-spin fa-lg text-navitag-blue"></i>
