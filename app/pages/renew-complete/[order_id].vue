@@ -5,7 +5,7 @@ const route = useRoute()
 const orderId = computed(() => route.params.order_id as string)
 
 useHead({
-  title: 'Navitag - Renewal Complete',
+  title: 'Navitag - Top-Up Complete',
   meta: [
     { name: 'robots', content: 'noindex, nofollow' },
   ],
@@ -67,7 +67,7 @@ function formatDate(dateStr: string) {
       <!-- Loading -->
       <div v-if="loading" class="text-center py-20">
         <i class="fas fa-spinner fa-spin fa-2x text-navitag-blue"></i>
-        <p class="text-gray-500 mt-4">Loading renewal details...</p>
+        <p class="text-gray-500 mt-4">Loading top-up details...</p>
       </div>
 
       <!-- Error -->
@@ -86,8 +86,8 @@ function formatDate(dateStr: string) {
           <div class="w-20 h-20 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-5">
             <i class="fas fa-check-circle text-green-500 fa-3x"></i>
           </div>
-          <h1 class="text-2xl font-extrabold text-gray-950 mb-2">Renewal Complete</h1>
-          <p class="text-sm text-gray-500">Your data plan renewal has been successfully processed.</p>
+          <h1 class="text-2xl font-extrabold text-gray-950 mb-2">Top-Up Complete</h1>
+          <p class="text-sm text-gray-500">Your data plan top-up has been successfully processed.</p>
         </div>
 
         <!-- Email Confirmation Notice -->
@@ -196,7 +196,7 @@ function formatDate(dateStr: string) {
               <div class="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
                 <i class="fas fa-check text-[10px]"></i>
               </div>
-              <p class="text-sm text-gray-700">Payment received and renewal order confirmed.</p>
+              <p class="text-sm text-gray-700">Payment received and top-up order confirmed.</p>
             </div>
             <div class="flex items-start gap-3">
               <div class="w-6 h-6 rounded-full bg-navitag-blue text-white flex items-center justify-center flex-shrink-0 text-xs mt-0.5">

@@ -5,5 +5,5 @@ useHead({
   ]
 })
 
-navigateTo('https://track.navitag.com/signup', { external: true })
+await navigateTo('https://track.navitag.com/signup', { external: true })
 </script>

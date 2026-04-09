@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "mcp__plugin_context7_context7__query-docs",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(find app:*)",
+      "Bash(grep -E \"meta:.*description|og:|twitter:\" app/pages/*.vue app/pages/**/*.vue app/components/*.vue)",
+      "Bash(grep -r \"description\" app/pages/index.vue app/pages/ph/*.vue)"
     ]
   },
   "enabledPlugins": {

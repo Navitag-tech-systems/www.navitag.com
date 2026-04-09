@@ -1,9 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'ph' })
 
-useHead({
+useSeoMeta({
   title: 'Navitag - Where to Buy | Southeast Asia',
-  link: [{ rel: 'icon', href: '/logo-sm.png', type: 'image/x-icon' }],
+  description: 'Find official Navitag stores and authorized retailers in the Philippines and Southeast Asia. GPS trackers, dashcams, and wearables.',
+  ogTitle: 'Navitag - Where to Buy | Southeast Asia',
+  ogDescription: 'Find official Navitag stores and authorized retailers in the Philippines and Southeast Asia.',
+  ogUrl: 'https://www.navitag.com/ph/distribution',
 })
 </script>
 
@@ -59,7 +62,7 @@ useHead({
             Soon
           </div>
           <div class="w-16 h-16 mx-auto rounded-full bg-gray-200 flex items-center justify-center mb-6 opacity-50">
-            <img src="/logo-sm.png" alt="" class="h-8 w-auto grayscale">
+            <img src="/logo-sm.png" alt="Navitag Logo" class="h-8 w-auto grayscale">
           </div>
           <h3 class="text-xl font-bold text-gray-500 mb-2">Navitag Direct</h3>
           <p class="text-sm text-gray-500 mb-8 flex-grow">Our official direct-to-consumer online portal is launching soon for seamless local checkout.</p>

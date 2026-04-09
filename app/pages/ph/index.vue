@@ -1,9 +1,12 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'ph' })
 
-useHead({
+useSeoMeta({
   title: 'Navitag - Southeast Asia | Global Tech. Local Fulfillment.',
-  link: [{ rel: 'icon', href: '/logo-sm.png', type: 'image/x-icon' }],
+  description: 'Navitag GPS trackers and dashcams available in the Philippines and Southeast Asia. Fast regional shipping from our Metro Manila hub.',
+  ogTitle: 'Navitag Southeast Asia - Global Tech. Local Fulfillment.',
+  ogDescription: 'Navitag GPS trackers and dashcams available in the Philippines and Southeast Asia. Fast regional shipping from our Metro Manila hub.',
+  ogUrl: 'https://www.navitag.com/ph',
 })
 </script>
 
@@ -34,7 +37,7 @@ useHead({
         <div class="relative w-full aspect-video bg-white p-8 rounded-3xl shadow-2xl shadow-gray-200/50 flex flex-col justify-between border border-gray-100">
           <div class="flex justify-between items-center">
             <div class="flex gap-2">
-              <img src="/logo-sm.png" alt="" class="h-6 w-auto">
+              <img src="/logo-sm.png" alt="Navitag Logo" class="h-6 w-auto">
               <span class="font-bold text-gray-900">Navitag Technology Systems OPC</span>
             </div>
           </div>

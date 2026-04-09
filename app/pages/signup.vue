@@ -2,8 +2,9 @@
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth'
 import { MEDUSA_BACKEND_URL } from '~/variables'
 
-useHead({
+useSeoMeta({
   title: 'Navitag - Sign Up',
+  robots: 'noindex, nofollow',
 })
 
 const { auth } = useFirebase()

@@ -7,7 +7,27 @@ export default defineNuxtConfig({
     '@nuxtjs/tailwindcss',
     '@nuxtjs/google-fonts',
     '@pinia/nuxt',
+    '@nuxtjs/sitemap',
   ],
+
+  site: {
+    url: 'https://www.navitag.com',
+    name: 'Navitag',
+  },
+
+  sitemap: {
+    exclude: [
+      '/acct-log',
+      '/test-products',
+      '/links',
+      '/shop',
+      '/login',
+      '/signup',
+      '/plan-checkout/**',
+      '/renew-complete/**',
+      '/top-up/**',
+    ],
+  },
 
   googleFonts: {
     families: {
@@ -17,6 +37,16 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      htmlAttrs: {
+        lang: 'en',
+      },
+      meta: [
+        { name: 'description', content: 'Navitag provides GPS trackers, wearables, and live dashcams with global M2M eSIM connectivity, working in over 100 countries from Day One.' },
+        { property: 'og:site_name', content: 'Navitag' },
+        { property: 'og:type', content: 'website' },
+        { property: 'og:locale', content: 'en_US' },
+        { name: 'twitter:card', content: 'summary' },
+      ],
       link: [
         {
           rel: 'stylesheet',

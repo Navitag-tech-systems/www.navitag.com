@@ -1,7 +1,7 @@
 <script setup lang="ts">
-useHead({
+useSeoMeta({
   title: 'Navitag - Privacy Policy',
-  link: [{ rel: 'icon', href: '/logo-sm.png', type: 'image/x-icon' }],
+  robots: 'noindex, nofollow',
 })
 </script>
 

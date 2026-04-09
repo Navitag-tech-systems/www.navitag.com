@@ -1,7 +1,10 @@
 <script setup lang="ts">
-useHead({
+useSeoMeta({
   title: 'Navitag - Globally Ready. Locally Supported',
-  link: [{ rel: 'icon', href: '/logo-sm.png', type: 'image/x-icon' }],
+  description: 'GPS trackers, wearables, and live dashcams with built-in global M2M eSIM connectivity. Plug and play in over 100 countries.',
+  ogTitle: 'Navitag - Globally Ready. Locally Supported',
+  ogDescription: 'GPS trackers, wearables, and live dashcams with built-in global M2M eSIM connectivity. Plug and play in over 100 countries.',
+  ogUrl: 'https://www.navitag.com',
 })
 </script>
 
@@ -32,12 +35,12 @@ useHead({
         <div class="relative w-full aspect-video bg-white p-8 rounded-3xl shadow-2xl shadow-gray-200/50 flex flex-col justify-between border border-gray-100">
           <div class="flex justify-between items-center">
             <div class="flex gap-2">
-              <img src="/logo-sm.png" alt="" class="h-6 w-auto">
+              <img src="/logo-sm.png" alt="Navitag Logo" class="h-6 w-auto">
               <span class="font-bold text-gray-900">Navitag US, APAC, LATIN AMERICA</span>
             </div>
           </div>
           <div class="w-full h-px bg-gray-100"></div>
-          <div class="text-center font-extrabold text-5xl tracking-tighter text-navitag-blue">GLOBAL CONNECTIVITY</div>
+          <div class="text-center font-extrabold text-5xl tracking-tighter text-navitag-blue" aria-hidden="true">GLOBAL CONNECTIVITY</div>
           <div class="w-full h-px bg-gray-100"></div>
           <div class="flex justify-between items-center text-xs text-gray-500 font-mono">
             <div>GPS / VIDEO / WEARABLES</div>
@@ -209,7 +212,7 @@ useHead({
       </div>
       <div class="md:col-span-6">
         <div class="flex items-center gap-4 mb-6">
-          <img src="/logo-sm.png" alt="" class="h-10 w-auto">
+          <img src="/logo-sm.png" alt="Navitag Logo" class="h-10 w-auto">
           <span class="text-2xl font-bold text-gray-900">Navitag Ecosystem</span>
         </div>
         <h2 class="text-4xl font-extrabold tracking-tight text-gray-950 mb-8">One App. Your Entire World, Secured.</h2>

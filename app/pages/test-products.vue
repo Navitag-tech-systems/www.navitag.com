@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
 
-useHead({
+useSeoMeta({
   title: 'Navitag - Product Test Page',
+  robots: 'noindex, nofollow',
 })
 
 const searchQuery = ref('')

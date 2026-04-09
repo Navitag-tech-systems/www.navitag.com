@@ -1,2 +1,11 @@
 User-Agent: *
-Disallow:
+Disallow: /login
+Disallow: /signup
+Disallow: /acct-log
+Disallow: /test-products
+Disallow: /plan-checkout/
+Disallow: /renew-complete/
+Disallow: /top-up/
+Disallow: /links
+
+Sitemap: https://www.navitag.com/sitemap.xml

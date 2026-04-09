@@ -6,7 +6,7 @@ const route = useRoute()
 const imei = computed(() => route.params.imei as string)
 
 useHead({
-  title: computed(() => `Navitag - Data Renewal | ${imei.value}`),
+  title: computed(() => `Navitag - Top-Up | ${imei.value}`),
 })
 
 const { auth } = useFirebase()
@@ -231,7 +231,7 @@ function onLoginSuccess() {
   <div class="min-h-screen bg-navitag-bg py-12 relative">
     <div class="container mx-auto px-6 max-w-2xl">
       <div class="mb-8 text-center">
-        <h1 class="text-3xl font-extrabold text-gray-950 mb-2">Data Renewal</h1>
+        <h1 class="text-3xl font-extrabold text-gray-950 mb-2">Top-Up</h1>
         <p class="text-gray-500 text-sm">IMEI: <span class="font-mono font-medium text-gray-700">{{ imei }}</span></p>
       </div>
 
@@ -277,7 +277,7 @@ function onLoginSuccess() {
         </div>
 
         <div v-else-if="plans.length === 0" class="p-6 bg-white rounded-2xl border border-gray-100 text-center text-gray-500 text-sm">
-          <i class="fas fa-info-circle mr-1"></i> No renewal plans available for this device model.
+          <i class="fas fa-info-circle mr-1"></i> No top-up plans available for this device model.
         </div>
 
         <div v-else class="grid sm:grid-cols-2 gap-6 items-stretch">
