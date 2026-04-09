@@ -100,7 +100,7 @@ async function fetchProducts(model: string) {
       return
     }
     const res = await $fetch<{ products: any[] }>(`${MEDUSA_BACKEND_URL}/store/products`, {
-      params: { category_id: categoryId, fields: '*variants.calculated_price' },
+      params: { category_id: categoryId, region_id: 'reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6', fields: '*variants.calculated_price' },
       headers: {
         'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
       },
@@ -114,6 +114,8 @@ async function fetchProducts(model: string) {
 }
 
 const selectedVariants = ref<Record<string, string>>({})
+const cartLoading = ref(false)
+const cartError = ref('')
 
 const plans = computed(() => {
   const durationOrder = ['3 months', '6 months', '12 months']
@@ -171,6 +173,53 @@ function selectVariant(productId: string, variantId: string) {
   selectedVariants.value = { [productId]: variantId }
 }
 
+async function buyPlan(productId: string) {
+  const variantId = selectedVariants.value[productId]
+  if (!variantId) return
+
+  cartLoading.value = true
+  cartError.value = ''
+
+  try {
+    const headers: Record<string, string> = {
+      'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
+    }
+
+    // 1. Create cart
+    const cartRes = await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts`, {
+      method: 'POST',
+      headers,
+      body: { region_id: 'reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6' },
+    })
+    const cartId = cartRes.cart.id
+
+    // 2. Add line item with IMEI metadata
+    await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts/${cartId}/line-items`, {
+      method: 'POST',
+      headers,
+      body: {
+        variant_id: variantId,
+        quantity: 1,
+        metadata: { imei: imei.value },
+      },
+    })
+
+    // 3. Add digital delivery shipping method
+    await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts/${cartId}/shipping-methods`, {
+      method: 'POST',
+      headers,
+      body: { option_id: 'so_01KNNDCWCEWGBC8BA71HG92T10' },
+    })
+
+    // 4. Navigate to checkout
+    navigateTo(`/plan-checkout/${cartId}`)
+  } catch (e: any) {
+    cartError.value = e?.data?.message || e?.message || 'Failed to create cart. Please try again.'
+  } finally {
+    cartLoading.value = false
+  }
+}
+
 function onLoginSuccess() {
   showLogin.value = false
   isAuthenticated.value = true
@@ -205,19 +254,14 @@ function onLoginSuccess() {
 
       <!-- Device Result -->
       <div v-if="device" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div class="p-6 flex items-center gap-4">
-          <div class="w-12 h-12 rounded-full bg-navitag-blue bg-opacity-10 flex items-center justify-center">
-            <i class="fas fa-satellite-dish text-navitag-blue fa-lg"></i>
+        <div class="p-6">
+          <h2 class="font-bold text-gray-950 text-lg">{{ device.ref1 || device.model }}</h2>
+          <div class="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
+            <span>IMEI: <span class="font-mono font-medium text-gray-700">{{ device.imei }}</span></span>
+            <span>Plan: <span class="font-semibold" :class="device.plan_level === 'Pro' ? 'text-navitag-blue' : 'text-gray-700'">{{ device.plan_level || 'Basic' }}</span></span>
           </div>
-          <div class="flex-1">
-            <h2 class="font-bold text-gray-950 text-lg">{{ device.model }}</h2>
-            <p class="text-sm text-gray-500">{{ device.ref1 || '—' }}</p>
-          </div>
-          <div class="text-right">
-            <p class="text-gray-400 text-xs uppercase font-medium">Expiration</p>
-            <p class="font-semibold text-sm" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">
-              {{ device.expiration || '—' }}
-            </p>
+          <div class="mt-2 text-sm text-gray-500">
+            Expiration: <span class="font-semibold" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">{{ device.expiration || '—' }}</span>
           </div>
         </div>
       </div>
@@ -236,11 +280,11 @@ function onLoginSuccess() {
           <i class="fas fa-info-circle mr-1"></i> No renewal plans available for this device model.
         </div>
 
-        <div v-else class="grid sm:grid-cols-2 gap-6">
+        <div v-else class="grid sm:grid-cols-2 gap-6 items-stretch">
           <div
             v-for="plan in plans"
             :key="plan.id"
-            class="bg-white rounded-2xl border-2 overflow-hidden transition-shadow"
+            class="bg-white rounded-2xl border-2 overflow-hidden transition-shadow flex flex-col"
             :class="[
               plan.tier === 'Pro' ? 'border-navitag-blue shadow-lg shadow-navitag-blue/10 sm:order-2' : 'border-gray-100 shadow-sm sm:order-1'
             ]"
@@ -251,22 +295,30 @@ function onLoginSuccess() {
               :class="plan.tier === 'Pro' ? 'bg-navitag-blue text-white' : 'bg-gray-50 text-gray-950'"
             >
               <div
-                v-if="plan.tier === 'Pro'"
-                class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white text-navitag-blue mb-2"
+                class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-2"
+                :class="[
+                  plan.tier === (device?.plan_level || 'Basic')
+                    ? (plan.tier === 'Pro' ? 'bg-white text-navitag-blue' : 'bg-navitag-orange text-white')
+                    : plan.tier === 'Pro'
+                      ? 'bg-white text-navitag-blue'
+                      : 'invisible'
+                ]"
               >
-                Recommended
+                {{ plan.tier === (device?.plan_level || 'Basic')
+                  ? (plan.tier === 'Pro' ? 'Current Plan' : 'Current')
+                  : 'Recommended' }}
               </div>
               <h3 class="text-xl font-extrabold">{{ plan.tier }}</h3>
               <p class="text-xs mt-1" :class="plan.tier === 'Pro' ? 'text-blue-100' : 'text-gray-500'">{{ plan.title }}</p>
             </div>
 
             <!-- Description -->
-            <div v-if="plan.description" class="px-6 pt-4">
-              <p class="text-xs text-gray-500 leading-relaxed">{{ plan.description }}</p>
+            <div class="px-6 pt-4 h-16">
+              <p class="text-xs text-gray-500 leading-relaxed line-clamp-3">{{ plan.description || '' }}</p>
             </div>
 
             <!-- Duration Options -->
-            <div class="p-6 space-y-3">
+            <div class="p-6 space-y-3 flex-1 flex flex-col justify-end">
               <button
                 v-for="variant in plan.variants"
                 :key="variant.id"
@@ -300,17 +352,26 @@ function onLoginSuccess() {
             <!-- Select Button -->
             <div class="px-6 pb-6">
               <button
-                :disabled="!selectedVariants[plan.id]"
+                :disabled="!selectedVariants[plan.id] || cartLoading"
                 class="w-full py-3 rounded-xl font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
                 :class="plan.tier === 'Pro'
                   ? 'bg-navitag-blue text-white hover:bg-opacity-90 shadow-lg shadow-navitag-blue/20'
                   : 'bg-gray-900 text-white hover:bg-gray-800'"
+                @click="buyPlan(plan.id)"
               >
-                Buy Plan
+                <span v-if="cartLoading">
+                  <i class="fas fa-spinner fa-spin mr-2"></i>Processing...
+                </span>
+                <span v-else>Buy Plan</span>
               </button>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Cart Error -->
+      <div v-if="cartError" class="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
+        <i class="fas fa-times-circle mr-2"></i>{{ cartError }}
       </div>
     </div>
 

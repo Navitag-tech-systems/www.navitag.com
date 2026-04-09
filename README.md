@@ -17,8 +17,16 @@ The next-generation front-facing website for the Navitag brand, replacing www-v2
 - [X] Product test page (`/test-products`) fetching from Medusa backend
 - [X] Data renewal page (`/data-renewal/:imei`) with device lookup via Unified API + Medusa plan display
 - [X] `/shop` redirect to `/ph/distribution`
+- [X] Solve region issue when getting products from MedusaJS — region `reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6` for variant pricing
+- [X] Data renewal plan selection with tier display (Basic/Pro), duration variants, and pricing
+- [X] Cart creation on plan select — adds line item with IMEI metadata + digital delivery shipping option
+- [X] Checkout page (`/plan-checkout/:cart_id`) — order summary, email input, PayPal card fields (no redirect)
+- [X] PayPal integration via Alphabit plugin (`pp_paypal_paypal`) — sandbox mode, inline card fields, 3DS/OTP modal support
+- [X] Renewal confirmation page (`/renew-complete/:order_id`) — device info, payment summary, activation status
+- [X] Account debug page (`/acct-log`) — Firebase user info + Medusa token display
 
 ### TODO
+- [ ] Test and debug complete plan renewal flow: data-renewal → plan-checkout → PayPal card payment → renew-complete
 - [ ] Fix CORS for Medusa token exchange on localhost (backend needs `localhost` in allowed origins, or use Nuxt server proxy)
 - [ ] Build reusable ecom components and/or composables (product search, catalog view)
 - [ ] Setup ecommerce storefront at /shop with MedusaJS backend
@@ -62,6 +70,9 @@ The next-generation front-facing website for the Navitag brand, replacing www-v2
 | `/signup` | Signup page with password requirements |
 | `/test-products` | Product test page — fetches and displays Medusa products |
 | `/data-renewal/:imei` | Device lookup + data renewal plans (requires auth) |
+| `/plan-checkout/:cart_id` | Checkout page for data plan renewal (digital delivery) |
+| `/renew-complete/:order_id` | Data plan renewal confirmation (dead-end page) |
+| `/acct-log` | Account debug page — Firebase user info + Medusa token (noindex) |
 
 ---
 
@@ -85,6 +96,11 @@ app/
 │   ├── login.vue             # Login page
 │   ├── signup.vue            # Signup page
 │   ├── privacy-policy.vue    # Privacy policy
+│   ├── acct-log.vue           # Account debug (user info + Medusa token)
+│   ├── plan-checkout/
+│   │   └── [cart_id].vue      # Data plan checkout page
+│   ├── renew-complete/
+│   │   └── [order_id].vue     # Data plan renewal confirmation
 │   ├── shop.vue              # Redirect to /ph/distribution
 │   ├── test-products.vue     # Medusa product test page
 │   ├── data-renewal/
