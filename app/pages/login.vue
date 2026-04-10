@@ -140,6 +140,11 @@ async function loginWithApple() {
           </button>
         </form>
 
+        <!-- Forgot password -->
+        <div class="text-right -mt-2 mb-4">
+          <NuxtLink to="/forgot-password" class="text-sm text-navitag-blue font-medium hover:underline">Forgot password?</NuxtLink>
+        </div>
+
         <!-- Divider -->
         <div class="flex items-center gap-4 mb-6">
           <div class="flex-1 h-px bg-gray-200"></div>
