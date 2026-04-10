@@ -5,7 +5,7 @@ import { getAnalytics } from 'firebase/analytics'
 export default defineNuxtPlugin(() => {
   const firebaseConfig = {
     apiKey: 'AIzaSyBrLi2dDVVZqxz1g-J17khBDzNtSgTPNtM',
-    authDomain: 'track-navitag-com.firebaseapp.com',
+    authDomain: 'auth.navitag.com',
     projectId: 'track-navitag-com',
     storageBucket: 'track-navitag-com.firebasestorage.app',
     messagingSenderId: '729666105352',

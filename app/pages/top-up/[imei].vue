@@ -185,11 +185,14 @@ async function buyPlan(productId: string) {
       'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
     }
 
-    // 1. Create cart
+    // 1. Create cart with device IMEI in metadata
     const cartRes = await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts`, {
       method: 'POST',
       headers,
-      body: { region_id: 'reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6' },
+      body: {
+        region_id: 'reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6',
+        metadata: { device_imei: imei.value },
+      },
     })
     const cartId = cartRes.cart.id
 
