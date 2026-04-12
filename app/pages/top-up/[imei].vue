@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onAuthStateChanged } from 'firebase/auth'
 import { UNIFIED_API_URL, MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
+import { getRegionId } from '~/utils/countryList'
 
 const route = useRoute()
 const imei = computed(() => route.params.imei as string)
@@ -10,6 +11,7 @@ useHead({
 })
 
 const { auth } = useFirebase()
+const { fetchCountryCode } = useBackendSync()
 
 const device = ref<any>(null)
 const products = ref<any[]>([])
@@ -19,8 +21,15 @@ const error = ref('')
 const showLogin = ref(false)
 const isAuthenticated = ref(false)
 const authChecked = ref(false)
+const ipCountryCode = ref<string | null>(null)
+const userCountryCode = ref<string | null>(null)
+
+// Region: MySQL user country > IP country > global default
+const countryCode = computed(() => userCountryCode.value || ipCountryCode.value)
+const regionId = computed(() => getRegionId(countryCode.value))
 
 onMounted(() => {
+  fetchCountryCode().then((code) => { ipCountryCode.value = code })
   onAuthStateChanged(auth, (user) => {
     isAuthenticated.value = !!user
     authChecked.value = true
@@ -45,13 +54,14 @@ async function checkDevice() {
 
   try {
     const idToken = await firebaseUser.getIdToken()
-    const res = await $fetch<{ status: string; device: any }>(`${UNIFIED_API_URL}/inventory/check`, {
+    const res = await $fetch<{ status: string; device: any; country: string | null }>(`${UNIFIED_API_URL}/inventory/check`, {
       params: { imei: imei.value },
       headers: {
         Authorization: `Bearer ${idToken}`,
       },
     })
     device.value = res.device
+    if (res.country) userCountryCode.value = res.country
     if (res.device?.model) {
       fetchProducts(res.device.model)
     }
@@ -59,13 +69,14 @@ async function checkDevice() {
     if (e?.response?.status === 401) {
       try {
         const freshToken = await firebaseUser.getIdToken(true)
-        const res = await $fetch<{ status: string; device: any }>(`${UNIFIED_API_URL}/inventory/check`, {
+        const res = await $fetch<{ status: string; device: any; country: string | null }>(`${UNIFIED_API_URL}/inventory/check`, {
           params: { imei: imei.value },
           headers: {
             Authorization: `Bearer ${freshToken}`,
           },
         })
         device.value = res.device
+        if (res.country) userCountryCode.value = res.country
         if (res.device?.model) {
           fetchProducts(res.device.model)
         }
@@ -100,7 +111,7 @@ async function fetchProducts(model: string) {
       return
     }
     const res = await $fetch<{ products: any[] }>(`${MEDUSA_BACKEND_URL}/store/products`, {
-      params: { category_id: categoryId, region_id: 'reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6', fields: '*variants.calculated_price' },
+      params: { category_id: categoryId, region_id: regionId.value, fields: '*variants.calculated_price' },
       headers: {
         'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
       },
@@ -185,13 +196,16 @@ async function buyPlan(productId: string) {
       'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
     }
 
-    // 1. Create cart with device IMEI in metadata
+    // 1. Create cart with device IMEI and country in metadata
+    const cartMeta: Record<string, string> = { device_imei: imei.value }
+    if (countryCode.value) cartMeta.country_code = countryCode.value
+
     const cartRes = await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts`, {
       method: 'POST',
       headers,
       body: {
-        region_id: 'reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6',
-        metadata: { device_imei: imei.value },
+        region_id: regionId.value,
+        metadata: cartMeta,
       },
     })
     const cartId = cartRes.cart.id
@@ -235,7 +249,7 @@ function onLoginSuccess() {
     <div class="container mx-auto px-6 max-w-2xl">
       <div class="mb-8 text-center">
         <h1 class="text-3xl font-extrabold text-gray-950 mb-2">Top-Up</h1>
-        <p class="text-gray-500 text-sm">IMEI: <span class="font-mono font-medium text-gray-700">{{ imei }}</span></p>
+        <p class="text-gray-500 text-sm">Device Unique ID: <span class="font-mono font-medium text-gray-700">{{ imei }}</span></p>
       </div>
 
       <!-- Auth guard message -->
@@ -259,12 +273,10 @@ function onLoginSuccess() {
       <div v-if="device" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="p-6">
           <h2 class="font-bold text-gray-950 text-lg">{{ device.ref1 || device.model }}</h2>
-          <div class="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500">
-            <span>IMEI: <span class="font-mono font-medium text-gray-700">{{ device.imei }}</span></span>
-            <span>Plan: <span class="font-semibold" :class="device.plan_level === 'Pro' ? 'text-navitag-blue' : 'text-gray-700'">{{ device.plan_level || 'Basic' }}</span></span>
-          </div>
           <div class="mt-2 text-sm text-gray-500">
-            Expiration: <span class="font-semibold" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">{{ device.expiration || '—' }}</span>
+            <div>Device Unique ID: <span class="font-mono font-medium text-gray-700">{{ device.imei }}</span></div>
+            <div>Plan: <span class="font-semibold" :class="device.plan_level === 'Pro' ? 'text-navitag-blue' : 'text-gray-700'">{{ device.plan_level || 'Basic' }}</span></div>
+            <div>Expiration: <span class="font-semibold" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">{{ device.expiration || '—' }}</span></div>
           </div>
         </div>
       </div>
@@ -365,7 +377,7 @@ function onLoginSuccess() {
                 <span v-if="cartLoading">
                   <i class="fas fa-spinner fa-spin mr-2"></i>Processing...
                 </span>
-                <span v-else>Buy Plan</span>
+                <span v-else>Top Up</span>
               </button>
             </div>
           </div>

@@ -8,9 +8,9 @@ The project has progressed through foundational setup, content migration, authen
 
 - **Foundation**: Nuxt 4 project created and deployed to GitHub. Brand colors extracted from www-v2 (Blue `#0076F5`, Orange `#F28C38`, Background `#F7F4EF`). All www-v2 content migrated (Global landing, PH landing, PH distribution, Privacy Policy).
 - **Layouts & Navigation**: Shared layouts with reusable header/footer components for Global and PH regions. Catch-all route redirects unmatched paths to homepage.
-- **Authentication**: Firebase Authentication and Analytics integrated (client-side plugin + composable). Login page with email/password, Google, Facebook, and Apple providers. Signup page with password validation. Reusable LoginOverlay component for in-page auth modals.
+- **Authentication**: Firebase Authentication and Analytics integrated (client-side plugin + composable). Login page with email/password, Google, Facebook, and Apple providers. Signup page with full name field and password validation. Reusable LoginOverlay component for in-page auth modals. All auth flows (signup, login, overlay) call `backendSync` to `api.navitag.net/v1/user/sync` in parallel with Medusa token exchange — ensures users are created/synced in the unified backend and Traccar on every auth event. Apple name capture persists to `localStorage` for durability across sessions.
 - **Ecommerce Backend**: Medusa product fetching working with region-based variant pricing (`reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6`). Product test page at `/test-products`.
-- **Data Plan Top-Up Flow**: Complete end-to-end flow built — device lookup via Unified API (`/top-up/:imei`), tiered plan selection (Basic/Pro) with duration variants and pricing, cart creation with IMEI in both cart metadata (`device_imei`) and line item metadata (`imei`) for reliable downstream extraction, digital delivery shipping auto-applied, checkout page (`/plan-checkout/:cart_id`) with PayPal inline card fields (Alphabit plugin, sandbox mode, 3DS/OTP support), and top-up confirmation page (`/renew-complete/:order_id`) with device info, payment summary, and activation status.
+- **Data Plan Top-Up Flow**: Complete end-to-end flow built — device lookup via Unified API (`/top-up/:imei`), tiered plan selection (Basic/Pro) with duration variants and pricing, region-aware product fetching (country from MySQL user > IP detection via ipinfo.io, mapped to Medusa region via `countryList.ts`), cart creation with IMEI and country_code in metadata for downstream processing, digital delivery shipping auto-applied, checkout page (`/plan-checkout/:cart_id`) with PayPal inline card fields (Alphabit plugin, sandbox mode, 3DS/OTP support), and top-up confirmation page (`/renew-complete/:order_id`) with device info, payment summary, and activation status.
 - **SEO**: `useSeoMeta()` with titles, descriptions, and OG tags on all public pages. Auto-generated sitemap via `@nuxtjs/sitemap`. `robots.txt` blocks internal routes. `noindex` on auth/utility pages. Custom error page (`error.vue`).
 - **Utility Pages**: Account debug page (`/acct-log`) for Firebase user info and Medusa token display. `/shop` redirects to `/ph/distribution`. `/links` redirects to external signup.
 
@@ -87,7 +87,8 @@ app/
 │   ├── FooterPh.vue          # Footer for PH/SEA pages
 │   └── LoginOverlay.vue      # Reusable full-page login modal
 ├── composables/
-│   └── useFirebase.ts        # Firebase auth/analytics composable
+│   ├── useFirebase.ts        # Firebase auth/analytics composable
+│   └── useBackendSync.ts     # Country detection + api.navitag.net user sync
 ├── layouts/
 │   ├── default.vue           # Global layout (HeaderGlobal + FooterGlobal)
 │   └── ph.vue                # PH layout (HeaderPh + FooterPh)
@@ -129,6 +130,8 @@ app/
 ### Auth Flows
 - **Medusa**: Firebase ID token → `POST /auth/customer/firebase` → Medusa JWT (24hr) → used in `Authorization` header for `/store/*` endpoints
 - **Unified API**: Firebase ID token directly in `Authorization: Bearer {idToken}` header
+- **Backend Sync** (`useBackendSync` composable): On every login/signup, the app calls `POST /user/sync` with country code and user profile data. On signup, country is manually selected (pre-filled from IP detection). On login/overlay, country is auto-detected via ipinfo.io. This creates or syncs the user in the unified backend (MySQL + Traccar). Runs in parallel with Medusa token exchange — non-blocking for navigation. Apple name captured to `localStorage` (`apple_pending_name`) and included as a fallback in sync payload.
+- **Region-Aware Pricing**: `countryList.ts` maps country codes to Medusa region IDs (PH → `reg_01KNY0WCJWP61HN944KFBN8XSX`, all others → global default `reg_01KNN7RSPMSP2FNKEG83ZQ0HQ6`). The top-up page resolves the user's country (MySQL > IP fallback) and uses the corresponding region for product price fetching and cart creation.
 
 ---
 

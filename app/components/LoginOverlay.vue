@@ -12,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const { auth } = useFirebase()
+const { backendSync } = useBackendSync()
 
 const email = ref('')
 const password = ref('')
@@ -50,7 +51,10 @@ async function loginWithEmail() {
   error.value = ''
   try {
     const cred = await signInWithEmailAndPassword(auth, email.value, password.value)
-    await exchangeMedusaToken(cred.user)
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user),
+    ])
     onSuccess()
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Login failed'
@@ -64,7 +68,10 @@ async function loginWithGoogle() {
   error.value = ''
   try {
     const cred = await signInWithPopup(auth, new GoogleAuthProvider())
-    await exchangeMedusaToken(cred.user)
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user),
+    ])
     onSuccess()
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google login failed'
@@ -78,7 +85,10 @@ async function loginWithFacebook() {
   error.value = ''
   try {
     const cred = await signInWithPopup(auth, new FacebookAuthProvider())
-    await exchangeMedusaToken(cred.user)
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user),
+    ])
     onSuccess()
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Facebook login failed'
@@ -95,7 +105,17 @@ async function loginWithApple() {
     provider.addScope('email')
     provider.addScope('name')
     const cred = await signInWithPopup(auth, provider)
-    await exchangeMedusaToken(cred.user)
+
+    // Apple only provides the name on FIRST sign-in — capture it immediately
+    const displayName = cred.user?.displayName || null
+    if (displayName) {
+      localStorage.setItem('apple_pending_name', displayName)
+    }
+
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user),
+    ])
     onSuccess()
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Apple login failed'

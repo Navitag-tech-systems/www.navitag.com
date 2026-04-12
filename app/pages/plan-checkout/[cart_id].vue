@@ -370,10 +370,10 @@ async function submitPayment() {
 
 <style scoped>
 .paypal-field-container {
-  height: 50px;
+  min-height: 60px;
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .paypal-field-container :deep(iframe) {

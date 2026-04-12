@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth'
 import { MEDUSA_BACKEND_URL } from '~/variables'
+import { countries } from '~/utils/countryList'
 
 useSeoMeta({
   title: 'Navitag - Sign Up',
@@ -8,7 +9,9 @@ useSeoMeta({
 })
 
 const { auth } = useFirebase()
+const { backendSync, fetchCountryCode } = useBackendSync()
 
+const fullName = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
@@ -16,6 +19,14 @@ const showPassword = ref(false)
 const showConfirmPassword = ref(false)
 const loading = ref(false)
 const error = ref('')
+const selectedCountry = ref('')
+const countryLoading = ref(true)
+
+onMounted(async () => {
+  const detected = await fetchCountryCode()
+  selectedCountry.value = detected?.toUpperCase() || 'US'
+  countryLoading.value = false
+})
 
 const passwordRules = computed(() => ({
   length: password.value.length >= 8,
@@ -56,7 +67,10 @@ async function signupWithEmail() {
   loading.value = true
   try {
     const cred = await createUserWithEmailAndPassword(auth, email.value, password.value)
-    await exchangeMedusaToken(cred.user)
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user, fullName.value || null, selectedCountry.value),
+    ])
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Sign up failed'
@@ -70,7 +84,10 @@ async function signupWithGoogle() {
   error.value = ''
   try {
     const cred = await signInWithPopup(auth, new GoogleAuthProvider())
-    await exchangeMedusaToken(cred.user)
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user, null, selectedCountry.value),
+    ])
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google sign up failed'
@@ -84,7 +101,10 @@ async function signupWithFacebook() {
   error.value = ''
   try {
     const cred = await signInWithPopup(auth, new FacebookAuthProvider())
-    await exchangeMedusaToken(cred.user)
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user, null, selectedCountry.value),
+    ])
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Facebook sign up failed'
@@ -101,7 +121,17 @@ async function signupWithApple() {
     provider.addScope('email')
     provider.addScope('name')
     const cred = await signInWithPopup(auth, provider)
-    await exchangeMedusaToken(cred.user)
+
+    // Apple only provides the name on FIRST sign-in — capture it immediately
+    const displayName = cred.user?.displayName || null
+    if (displayName) {
+      localStorage.setItem('apple_pending_name', displayName)
+    }
+
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user, null, selectedCountry.value),
+    ])
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Apple sign up failed'
@@ -134,6 +164,28 @@ async function signupWithApple() {
 
         <!-- Email Form -->
         <form @submit.prevent="signupWithEmail" class="space-y-4 mb-6">
+          <div>
+            <input
+              id="full-name"
+              v-model="fullName"
+              type="text"
+              required
+              placeholder="full name"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-navitag-blue focus:border-transparent"
+            >
+          </div>
+          <div>
+            <select
+              v-model="selectedCountry"
+              :disabled="countryLoading"
+              class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-navitag-blue focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="" disabled>Select your country</option>
+              <option v-for="c in countries" :key="c.code" :value="c.code">
+                {{ c.name }}
+              </option>
+            </select>
+          </div>
           <div>
             <input
               id="email"
