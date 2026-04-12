@@ -284,7 +284,8 @@ function onLoginSuccess() {
       <!-- Renewal Plans -->
       <div v-if="device" class="mt-10">
         <h2 class="text-xl font-extrabold text-gray-950 mb-2">Choose a Data Plan</h2>
-        <p class="text-sm text-gray-500 mb-6">Select a plan to renew connectivity for your <strong>{{ device.model }}</strong>.</p>
+        <p class="text-sm text-gray-500">Select a plan to renew connectivity for your <strong>{{ device.model }}</strong>.</p>
+        <p class="text-sm text-gray-500 mb-6">Changing your plan will convert all of your unused allocation to the new teir. This will be added on top of the top-up purchased.</p>
 
         <div v-if="productsLoading" class="text-center py-10">
           <i class="fas fa-spinner fa-spin fa-lg text-navitag-blue"></i>
@@ -325,11 +326,6 @@ function onLoginSuccess() {
               </div>
               <h3 class="text-xl font-extrabold">{{ plan.tier }}</h3>
               <p class="text-xs mt-1" :class="plan.tier === 'Pro' ? 'text-blue-100' : 'text-gray-500'">{{ plan.title }}</p>
-            </div>
-
-            <!-- Description -->
-            <div class="px-6 pt-4 h-16">
-              <p class="text-xs text-gray-500 leading-relaxed line-clamp-3">{{ plan.description || '' }}</p>
             </div>
 
             <!-- Duration Options -->
@@ -377,7 +373,9 @@ function onLoginSuccess() {
                 <span v-if="cartLoading">
                   <i class="fas fa-spinner fa-spin mr-2"></i>Processing...
                 </span>
-                <span v-else>Top Up</span>
+                <span v-else>
+                  {{ plan.tier == (device?.plan_level || 'Basic') ? "Top-up Now" : "Change Plan" }}
+                </span>
               </button>
             </div>
           </div>
