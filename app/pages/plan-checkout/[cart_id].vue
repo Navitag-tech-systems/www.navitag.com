@@ -15,7 +15,7 @@ const headers: Record<string, string> = {
   'Content-Type': 'application/json',
 }
 
-function loadPayPalSDK(clientToken: string): Promise<any> {
+function loadPayPalSDK(clientToken: string, currency: string): Promise<any> {
   return new Promise((resolve, reject) => {
     if ((window as any).paypal) return resolve((window as any).paypal)
 
@@ -23,7 +23,7 @@ function loadPayPalSDK(clientToken: string): Promise<any> {
     script.src = 'https://www.paypal.com/sdk/js?' + new URLSearchParams({
       'client-id': PAYPAL_CLIENT_ID,
       components: 'card-fields',
-      currency: 'USD',
+      currency,
       intent: 'capture',
     }).toString()
     script.setAttribute('data-client-token', clientToken)
@@ -136,8 +136,9 @@ async function initPayment() {
     })
     const clientToken = tokenRes.client_token
 
-    // 5. Load PayPal SDK with client token via script tag
-    const paypal = await loadPayPalSDK(clientToken)
+    // 5. Load PayPal SDK with client token and cart currency via script tag
+    const currency = (cart.value?.currency_code || 'usd').toUpperCase()
+    const paypal = await loadPayPalSDK(clientToken, currency)
 
     if (!paypal?.CardFields) {
       throw new Error('PayPal Card Fields not available')

@@ -16,30 +16,53 @@ const { fetchCountryCode } = useBackendSync()
 const device = ref<any>(null)
 const products = ref<any[]>([])
 const productsLoading = ref(false)
-const loading = ref(false)
+const loading = ref(true)
 const error = ref('')
 const showLogin = ref(false)
 const isAuthenticated = ref(false)
 const authChecked = ref(false)
 const ipCountryCode = ref<string | null>(null)
 const userCountryCode = ref<string | null>(null)
+const locationError = ref(false)
 
 // Region: MySQL user country > IP country > global default
 const countryCode = computed(() => userCountryCode.value || ipCountryCode.value)
 const regionId = computed(() => getRegionId(countryCode.value))
 
-onMounted(() => {
-  fetchCountryCode().then((code) => { ipCountryCode.value = code })
-  onAuthStateChanged(auth, (user) => {
-    isAuthenticated.value = !!user
-    authChecked.value = true
-    if (user) {
-      checkDevice()
-    } else {
-      showLogin.value = true
-    }
+onMounted(async () => {
+  const firstAuthState = new Promise<any>((resolve) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
+      unsub()
+      resolve(user)
+    })
   })
+
+  const [user, detectedCountry] = await Promise.all([
+    firstAuthState,
+    fetchCountryCode(),
+  ])
+
+  if (!detectedCountry) {
+    loading.value = false
+    locationError.value = true
+    return
+  }
+
+  ipCountryCode.value = detectedCountry
+  isAuthenticated.value = !!user
+  authChecked.value = true
+
+  if (user) {
+    checkDevice()
+  } else {
+    loading.value = false
+    showLogin.value = true
+  }
 })
+
+function retryLocation() {
+  if (typeof window !== 'undefined') window.location.reload()
+}
 
 async function checkDevice() {
   const firebaseUser = auth.currentUser
@@ -253,13 +276,26 @@ function onLoginSuccess() {
       </div>
 
       <!-- Auth guard message -->
-      <div v-if="authChecked && !isAuthenticated" class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm text-center">
+      <div v-if="authChecked && !isAuthenticated && !locationError" class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm text-center">
         <i class="fas fa-lock mr-2"></i>
         You need to <button class="text-navitag-blue font-semibold underline" @click="showLogin = true">sign in</button> to view your device.
       </div>
 
+      <!-- Location error -->
+      <div v-if="locationError" class="p-8 bg-white rounded-2xl border border-gray-100 shadow-sm text-center">
+        <i class="fas fa-map-marker-alt fa-2x text-gray-300 mb-4"></i>
+        <h2 class="font-bold text-gray-950 text-lg mb-2">Unable to detect your location</h2>
+        <p class="text-sm text-gray-500 mb-6">We couldn't reach our location service. Check your connection and try again.</p>
+        <button
+          class="px-6 py-3 rounded-xl bg-navitag-blue text-white font-semibold hover:bg-opacity-90 transition shadow-lg shadow-navitag-blue/20"
+          @click="retryLocation"
+        >
+          <i class="fas fa-rotate-right mr-2"></i>Retry
+        </button>
+      </div>
+
       <!-- Loading -->
-      <div v-if="loading" class="text-center py-20">
+      <div v-if="loading && !locationError" class="text-center py-20">
         <i class="fas fa-spinner fa-spin fa-2x text-navitag-blue"></i>
         <p class="text-gray-500 mt-4">Looking up device...</p>
       </div>
@@ -388,6 +424,6 @@ function onLoginSuccess() {
       </div>
     </div>
 
-    <LoginOverlay v-model="showLogin" @success="onLoginSuccess" />
+    <LoginOverlay v-model="showLogin" :ip-country-code="ipCountryCode" @success="onLoginSuccess" />
   </div>
 </template>

@@ -4,6 +4,7 @@ import { MEDUSA_BACKEND_URL } from '~/variables'
 
 const props = defineProps<{
   modelValue: boolean
+  ipCountryCode?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -53,7 +54,7 @@ async function loginWithEmail() {
     const cred = await signInWithEmailAndPassword(auth, email.value, password.value)
     await Promise.all([
       exchangeMedusaToken(cred.user),
-      backendSync(cred.user),
+      backendSync(cred.user, null, props.ipCountryCode),
     ])
     onSuccess()
   } catch (e: any) {
@@ -70,7 +71,7 @@ async function loginWithGoogle() {
     const cred = await signInWithPopup(auth, new GoogleAuthProvider())
     await Promise.all([
       exchangeMedusaToken(cred.user),
-      backendSync(cred.user),
+      backendSync(cred.user, null, props.ipCountryCode),
     ])
     onSuccess()
   } catch (e: any) {
@@ -87,7 +88,7 @@ async function loginWithFacebook() {
     const cred = await signInWithPopup(auth, new FacebookAuthProvider())
     await Promise.all([
       exchangeMedusaToken(cred.user),
-      backendSync(cred.user),
+      backendSync(cred.user, null, props.ipCountryCode),
     ])
     onSuccess()
   } catch (e: any) {
@@ -114,7 +115,7 @@ async function loginWithApple() {
 
     await Promise.all([
       exchangeMedusaToken(cred.user),
-      backendSync(cred.user),
+      backendSync(cred.user, null, props.ipCountryCode),
     ])
     onSuccess()
   } catch (e: any) {

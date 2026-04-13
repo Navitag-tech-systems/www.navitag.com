@@ -7,12 +7,14 @@ async function fetchCountryCode(): Promise<string | null> {
 
   try {
     const data = await $fetch<{ country_code: string }>('https://api.ipinfo.io/lite/me?token=f1b39e92820d53', {
-      timeout: 8000,
+      timeout: 5000,
+      retry: 2,
+      retryDelay: 500,
     })
     countryCodeCache = data.country_code || null
     return countryCodeCache
   } catch (e) {
-    console.error('[BackendSync] Failed to detect country code:', e)
+    console.error('[BackendSync] Failed to detect country code after retries:', e)
     return null
   }
 }
