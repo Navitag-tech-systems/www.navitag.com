@@ -26,6 +26,7 @@ export default defineNuxtConfig({
       '/plan-checkout/**',
       '/renew-complete/**',
       '/top-up/**',
+      '/articles/**',
     ],
   },
 
@@ -56,6 +57,12 @@ export default defineNuxtConfig({
           rel: 'icon',
           type: 'image/png',
           href: '/logo-sm.png',
+        },
+      ],
+      noscript: [
+        {
+          children: '<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1478826687226054&ev=PageView&noscript=1" alt="" />',
+          tagPosition: 'bodyClose',
         },
       ],
     },

@@ -15,8 +15,11 @@ The project has progressed through foundational setup, content migration, authen
 - **Resilient Country Detection**: `fetchCountryCode` (ipinfo.io) now retries on failure — 5s per-attempt timeout, 2 retries, 500ms delay (3 total attempts). If all attempts fail, the top-up page shows an inline "Unable to detect your location" card with a Retry button that refreshes the page (clearing the module-level cache and re-hitting the network).
 - **SEO**: `useSeoMeta()` with titles, descriptions, and OG tags on all public pages. Auto-generated sitemap via `@nuxtjs/sitemap`. `robots.txt` blocks internal routes. `noindex` on auth/utility pages. Custom error page (`error.vue`).
 - **Utility Pages**: Account debug page (`/acct-log`) for Firebase user info and Medusa token display. `/shop` redirects to `/ph/distribution`. `/links` redirects to external signup.
+- **Meta Pixel**: Site-wide Meta Pixel (ID `1478826687226054`) loaded via `meta-pixel.client.ts` plugin. Fires `PageView` on initial load and on every SPA route change (`router.afterEach`). `<noscript>` image fallback injected at `bodyClose` via `nuxt.config.ts`.
 
 ### TODO
+- [ ] Integrate Strapi CMS for `/articles/[...slug]` — fetch article by slug, render body + SEO meta from Strapi fields
+- [ ] Meta Pixel — wire standard conversion events on non-Strapi pages: `Lead` on signup success, `InitiateCheckout` on plan-checkout load, `Purchase` on renew-complete (with `value` + `currency` from the order). Use `useNuxtApp().$fbq` helper.
 - [ ] Test and debug complete plan top-up flow: top-up → plan-checkout → PayPal card payment → renew-complete
 - [ ] Fix CORS for Medusa token exchange on localhost (backend needs `localhost` in allowed origins, or use Nuxt server proxy)
 - [ ] Build reusable ecom components and/or composables (product search, catalog view)
@@ -74,6 +77,7 @@ The project has progressed through foundational setup, content migration, authen
 | `/test-products` | No | Product test page — fetches and displays Medusa products |
 | `/links` | No | Redirects to `https://track.navitag.com/signup` |
 | `/shop` | No | Redirects to `/ph/distribution` |
+| `/articles/[...slug]` | No | Strapi CMS article detail (no header/footer, catch-all for nested paths) |
 | `/*` (catch-all) | No | Unmatched routes → custom 404 error page |
 
 ---

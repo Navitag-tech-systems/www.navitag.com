@@ -7,7 +7,10 @@
       "Bash(grep -E \"meta:.*description|og:|twitter:\" app/pages/*.vue app/pages/**/*.vue app/components/*.vue)",
       "Bash(grep -r \"description\" app/pages/index.vue app/pages/ph/*.vue)",
       "mcp__plugin_context7_context7__resolve-library-id",
-      "WebFetch(domain:developer.paypal.com)"
+      "WebFetch(domain:developer.paypal.com)",
+      "WebFetch(domain:docs.strapi.io)",
+      "WebFetch(domain:strapi.io)",
+      "Bash(git -C C:/Users/burke/Projects/navitag/www-v3 check-ignore -v guides/)"
     ]
   },
   "enabledPlugins": {
