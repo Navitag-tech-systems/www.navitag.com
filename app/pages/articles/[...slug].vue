@@ -2,7 +2,7 @@
 import { STRAPI_URL } from '~/variables'
 
 definePageMeta({
-  layout: 'default',
+  layout: false,
 })
 
 const route = useRoute()
@@ -64,7 +64,7 @@ useHead({
 })
 
 useSeoMeta({
-  title: computed(() => article.value?.seoTitle ?? article.value?.title ?? slug.value),
+  title: computed(() => `NAVITAG | ${article.value?.seoTitle ?? article.value?.title ?? slug.value}`),
   description: computed(() => article.value?.seoDescription ?? article.value?.excerpt ?? ''),
   ogTitle: computed(() => article.value?.seoTitle ?? article.value?.title ?? ''),
   ogDescription: computed(() => article.value?.seoDescription ?? article.value?.excerpt ?? ''),
