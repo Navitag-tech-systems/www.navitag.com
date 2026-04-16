@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { STRAPI_URL } from '~/variables'
+
 definePageMeta({
-  layout: false,
+  layout: 'default',
 })
 
 const route = useRoute()
@@ -11,13 +13,34 @@ const slug = computed(() => {
   return Array.isArray(raw) ? raw.join('/') : (raw as string)
 })
 
-// TODO: Replace with Strapi fetch by slug
-// const { data: article } = await useAsyncData(`article-${slug.value}`, () =>
-//   $fetch(`${STRAPI_URL}/api/articles`, {
-//     query: { 'filters[slug][$eq]': slug.value, populate: '*' },
-//   })
-// )
-const article = ref<any>(null)
+const { data: article, error } = await useAsyncData(
+  `article-${slug.value}`,
+  async () => {
+    const res = await $fetch<any>(`${STRAPI_URL}/api/articles`, {
+      query: {
+        'filters[slug][$eq]': slug.value,
+        'populate': '*',
+      },
+    })
+    const entry = res?.data?.[0]
+    if (!entry) return null
+    const attrs = entry.attributes ?? entry
+    return {
+      id: entry.id,
+      title: attrs.title,
+      slug: attrs.slug,
+      excerpt: attrs.excerpt,
+      bodyHtml: attrs.bodyHtml,
+      customCss: attrs.customCss,
+      category: attrs.category?.data?.attributes?.name ?? attrs.category?.name ?? null,
+      author: attrs.author?.data?.attributes?.name ?? attrs.author?.name ?? null,
+      seoTitle: attrs.seoTitle,
+      seoDescription: attrs.seoDescription,
+      ogImage: attrs.ogImage?.data?.attributes?.url ?? attrs.ogImage?.url ?? null,
+      noindex: attrs.noindex ?? false,
+    }
+  },
+)
 
 watch(
   article,
@@ -34,19 +57,30 @@ watch(
 )
 
 useSeoMeta({
-  title: computed(() => `Navitag - ${slug.value}`),
-  robots: 'noindex, nofollow',
+  title: computed(() => article.value?.seoTitle ?? article.value?.title ?? slug.value),
+  description: computed(() => article.value?.seoDescription ?? article.value?.excerpt ?? ''),
+  ogTitle: computed(() => article.value?.seoTitle ?? article.value?.title ?? ''),
+  ogDescription: computed(() => article.value?.seoDescription ?? article.value?.excerpt ?? ''),
+  ogImage: computed(() => article.value?.ogImage ?? ''),
+  robots: computed(() => article.value?.noindex ? 'noindex, nofollow' : 'index, follow'),
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F7F4EF] px-4 py-12">
-    <article class="mx-auto max-w-3xl">
-      <p class="text-sm text-gray-500">Article slug: {{ slug }}</p>
-      <h1 class="mt-4 text-3xl font-bold text-[#0076F5]">Article placeholder</h1>
-      <p class="mt-4 text-gray-700">
-        Strapi CMS integration pending. This page will render article content fetched by slug.
-      </p>
-    </article>
+  <div class="min-h-screen bg-[#F7F4EF]">
+    <!-- 404 -->
+    <div v-if="error || !article" class="flex flex-col items-center justify-center px-4 py-24 text-center">
+      <h1 class="text-4xl font-bold text-[#0076F5]">Article not found</h1>
+      <p class="mt-4 text-gray-600">The article you're looking for doesn't exist or has been removed.</p>
+      <NuxtLink to="/" class="mt-8 inline-block rounded-lg bg-[#0076F5] px-6 py-3 font-semibold text-white">
+        Back to home
+      </NuxtLink>
+    </div>
+
+    <!-- Article -->
+    <div v-else class="cms">
+      <style v-if="article.customCss" v-html="article.customCss"></style>
+      <div v-html="article.bodyHtml"></div>
+    </div>
   </div>
 </template>

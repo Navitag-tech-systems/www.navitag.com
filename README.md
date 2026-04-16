@@ -15,10 +15,11 @@ The project has progressed through foundational setup, content migration, authen
 - **Resilient Country Detection**: `fetchCountryCode` (ipinfo.io) now retries on failure — 5s per-attempt timeout, 2 retries, 500ms delay (3 total attempts). If all attempts fail, the top-up page shows an inline "Unable to detect your location" card with a Retry button that refreshes the page (clearing the module-level cache and re-hitting the network).
 - **SEO**: `useSeoMeta()` with titles, descriptions, and OG tags on all public pages. Auto-generated sitemap via `@nuxtjs/sitemap`. `robots.txt` blocks internal routes. `noindex` on auth/utility pages. Custom error page (`error.vue`).
 - **Utility Pages**: Account debug page (`/acct-log`) for Firebase user info and Medusa token display. `/shop` redirects to `/ph/distribution`. `/links` redirects to external signup.
-- **Meta Pixel**: Site-wide Meta Pixel (ID `1478826687226054`) loaded via `meta-pixel.client.ts` plugin. Fires `PageView` on initial load and on every SPA route change (`router.afterEach`). `<noscript>` image fallback injected at `bodyClose` via `nuxt.config.ts`.
+- **Meta Pixel**: Site-wide Meta Pixel (ID `1478826687226054`) loaded via `meta-pixel.client.ts` plugin. Fires `PageView` on initial load and on every SPA route change (`router.afterEach`). `<noscript>` image fallback injected at `bodyClose` via `nuxt.config.ts`. Exposes `$fbq(event, params)` helper via Nuxt plugin injection for per-page custom events. Global `data-pixel-*` click listener wired for CMS article CTAs — supports `Lead`, `InitiateCheckout`, `Contact`, `CompleteRegistration`, `AddToCart`, and `Custom` events with `content_name`, `value`/`currency` params. Reserved events (`PageView`, `ViewContent`, `Purchase`) are blocked from manual firing.
+- **Firebase Analytics (GA4)**: Firebase's `getAnalytics()` auto-fires the initial `page_view`. The `firebase.client.ts` plugin adds `router.afterEach` → `logEvent(analytics, 'page_view', { page_path, page_location, page_title })` so client-side SPA navigations also get tracked. Measurement ID `G-TCCJ0H788E` is shared with the Firebase project — Firebase Analytics and GA4 are the same stream. Exposes `$gaEvent(name, params)` helper via Nuxt plugin injection for per-page custom events.
 
 ### TODO
-- [ ] Integrate Strapi CMS for `/articles/[...slug]` — fetch article by slug, render body + SEO meta from Strapi fields
+- [x] Integrate Strapi CMS for `/articles/[...slug]` — fetch article by slug, render bodyHtml + customCss inside `.cms` wrapper, SEO meta from Strapi fields, ViewContent pixel event on load
 - [ ] Meta Pixel — wire standard conversion events on non-Strapi pages: `Lead` on signup success, `InitiateCheckout` on plan-checkout load, `Purchase` on renew-complete (with `value` + `currency` from the order). Use `useNuxtApp().$fbq` helper.
 - [ ] Test and debug complete plan top-up flow: top-up → plan-checkout → PayPal card payment → renew-complete
 - [ ] Fix CORS for Medusa token exchange on localhost (backend needs `localhost` in allowed origins, or use Nuxt server proxy)
@@ -49,6 +50,7 @@ The project has progressed through foundational setup, content migration, authen
 | **Font Awesome 6** | Icon library (CDN) |
 | **Google Fonts** | Funnel Sans (`@nuxtjs/google-fonts`) |
 | **MedusaJS** | Ecommerce backend (shopapi.navitag.com) |
+| **Strapi CMS** | Headless CMS for articles (cms.navitag.com) |
 | **@nuxtjs/sitemap** | Auto-generated sitemap for SEO |
 
 ## Modules & Plugins
@@ -73,6 +75,7 @@ The project has progressed through foundational setup, content migration, authen
 | `/top-up/:imei` | No | Device lookup + data top-up plans (requires auth) |
 | `/plan-checkout/:cart_id` | No | Checkout page for data plan top-up (digital delivery) |
 | `/renew-complete/:order_id` | No | Data plan top-up confirmation (dead-end page) |
+| `/articles/[...slug]` | Conditional | Strapi CMS articles — bodyHtml + customCss rendered in `.cms` wrapper. `noindex` controlled per-article |
 | `/acct-log` | No | Account debug page — Firebase user info + Medusa token |
 | `/test-products` | No | Product test page — fetches and displays Medusa products |
 | `/links` | No | Redirects to `https://track.navitag.com/signup` |

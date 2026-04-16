@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getAnalytics } from 'firebase/analytics'
+import { getAnalytics, logEvent } from 'firebase/analytics'
 
 export default defineNuxtPlugin(() => {
   const firebaseConfig = {
@@ -17,11 +17,23 @@ export default defineNuxtPlugin(() => {
   const auth = getAuth(app)
   const analytics = getAnalytics(app)
 
+  const router = useRouter()
+  router.afterEach((to) => {
+    logEvent(analytics, 'page_view', {
+      page_path: to.fullPath,
+      page_location: window.location.href,
+      page_title: document.title,
+    })
+  })
+
   return {
     provide: {
       firebaseApp: app,
       firebaseAuth: auth,
       firebaseAnalytics: analytics,
+      gaEvent: (eventName: string, params?: Record<string, any>) => {
+        logEvent(analytics, eventName, params)
+      },
     },
   }
 })

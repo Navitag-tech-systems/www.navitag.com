@@ -27,6 +27,38 @@ export default defineNuxtPlugin((nuxtApp) => {
     ;(window as any).fbq?.('track', 'PageView')
   })
 
+  // Global click listener for CMS data-pixel-* tracked CTAs
+  const RESERVED_EVENTS = new Set(['PageView', 'ViewContent', 'Purchase'])
+
+  document.addEventListener('click', (e) => {
+    const target = (e.target as HTMLElement)?.closest<HTMLElement>('[data-pixel-event]')
+    if (!target) return
+
+    const event = target.dataset.pixelEvent
+    if (!event || RESERVED_EVENTS.has(event)) return
+
+    const params: Record<string, any> = {}
+
+    if (target.dataset.pixelContentName) {
+      params.content_name = target.dataset.pixelContentName
+    }
+
+    if (event === 'Custom' && target.dataset.pixelCustomName) {
+      ;(window as any).fbq?.('trackCustom', target.dataset.pixelCustomName, params)
+      return
+    }
+
+    if (target.dataset.pixelValue) {
+      params.value = parseFloat(target.dataset.pixelValue)
+      params.currency = target.dataset.pixelCurrency || 'USD'
+      if (!target.dataset.pixelCurrency) {
+        console.warn('[meta-pixel] data-pixel-value set without data-pixel-currency, defaulting to USD')
+      }
+    }
+
+    ;(window as any).fbq?.('track', event, params)
+  })
+
   return {
     provide: {
       fbq: (event: string, params?: Record<string, any>) => {
