@@ -6,8 +6,6 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { $fbq } = useNuxtApp()
-
 const slug = computed(() => {
   const raw = route.params.slug
   return Array.isArray(raw) ? raw.join('/') : (raw as string)
@@ -42,19 +40,28 @@ const { data: article, error } = await useAsyncData(
   },
 )
 
-watch(
-  article,
-  (a) => {
-    if (!a) return
-    $fbq('ViewContent', {
-      content_name: a.title,
-      content_category: a.category,
-      content_ids: [a.slug ?? slug.value],
-      content_type: 'article',
-    })
-  },
-  { immediate: true },
-)
+if (import.meta.client) {
+  const { $fbq } = useNuxtApp()
+  watch(
+    article,
+    (a) => {
+      if (!a) return
+      $fbq('ViewContent', {
+        content_name: a.title,
+        content_category: a.category,
+        content_ids: [a.slug ?? slug.value],
+        content_type: 'article',
+      })
+    },
+    { immediate: true },
+  )
+}
+
+useHead({
+  style: computed(() =>
+    article.value?.customCss ? [{ innerHTML: article.value.customCss }] : [],
+  ),
+})
 
 useSeoMeta({
   title: computed(() => article.value?.seoTitle ?? article.value?.title ?? slug.value),
@@ -79,7 +86,6 @@ useSeoMeta({
 
     <!-- Article -->
     <div v-else class="cms">
-      <style v-if="article.customCss" v-html="article.customCss"></style>
       <div v-html="article.bodyHtml"></div>
     </div>
   </div>

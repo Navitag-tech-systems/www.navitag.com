@@ -26,11 +26,22 @@ The project has progressed through foundational setup, content migration, authen
 - [ ] Build reusable ecom components and/or composables (product search, catalog view)
 - [ ] Setup ecommerce storefront at /shop with MedusaJS backend
 
-#### SEO TODO
-- [ ] Add og:image meta tag to all public pages (needs brand social card image, e.g. `/og-image.png` at 1200x630)
+#### SEO TODO — This Week
+- [ ] Add global og:image to `nuxt.config.ts` and `ogImage` to homepage + `/ph` pages (needs brand social card at 1200x630, e.g. `/og-image.png`)
+- [ ] Add canonical URLs to all public pages via `useSeoMeta()`
+- [ ] Add `robots: 'noindex, nofollow'` to `error.vue`
+
+#### SEO TODO — Next 2 Weeks
 - [ ] Add JSON-LD structured data: Organization schema (homepage), LocalBusiness schema (PH page)
+- [ ] Create `public/manifest.json` and add `apple-touch-icon` link
 - [ ] Add hreflang tags linking `/` (en) ↔ `/ph` (en-PH) for regional cross-referencing
-- [ ] Add canonical URLs to pages with potential duplicate content
+- [ ] Defer Font Awesome CSS loading (currently render-blocking in `nuxt.config.ts`)
+- [ ] Complete Twitter card meta: add `twitter:image`, `twitter:site`
+
+#### SEO TODO — Next Month
+- [ ] Install `@nuxt/image` and use `<NuxtImg>` for image optimization
+- [ ] Review `/articles/**` sitemap exclusion — index if articles are public
+- [ ] Add breadcrumb navigation to `/ph/distribution`
 - [ ] Add `loading="lazy"` to below-the-fold images
 - [ ] Consider adding Product schema markup when ecommerce storefront launches
 
