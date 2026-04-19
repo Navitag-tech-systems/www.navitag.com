@@ -177,6 +177,14 @@ const plans = computed(() => {
   }).sort((a, b) => (a.tier === 'Pro' ? -1 : 1))
 })
 
+function formatExpiration(value: string | null | undefined): string {
+  if (!value) return ''
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value)
+  if (isNaN(d.getTime())) return value
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 function formatPrice(variant: any): string {
   const calc = variant?.calculated_price
   if (calc?.calculated_amount != null) {
@@ -312,7 +320,7 @@ function onLoginSuccess() {
           <div class="mt-2 text-sm text-gray-500">
             <div>Device Unique ID: <span class="font-mono font-medium text-gray-700">{{ device.imei }}</span></div>
             <div>Plan: <span class="font-semibold" :class="device.plan_level === 'Pro' ? 'text-navitag-blue' : 'text-gray-700'">{{ device.plan_level || 'Basic' }}</span></div>
-            <div>Expiration: <span class="font-semibold" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">{{ device.expiration || '—' }}</span></div>
+            <div>Expiration: <span class="font-semibold" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">{{ device.expiration ? formatExpiration(device.expiration) : '—' }}</span></div>
           </div>
         </div>
       </div>

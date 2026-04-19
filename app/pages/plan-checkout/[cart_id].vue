@@ -91,12 +91,9 @@ function validateBilling(): boolean {
   if (!billing.lastName.trim()) errs.lastName = 'Last name is required.'
   if (!billing.addressLine1.trim()) errs.addressLine1 = 'Street address is required.'
   if (!billing.adminArea2.trim()) errs.adminArea2 = 'City is required.'
+  if (!billing.adminArea1.trim()) errs.adminArea1 = 'State/province is required.'
   if (!billing.postalCode.trim()) errs.postalCode = 'Postal code is required.'
   if (!billing.countryCode) errs.countryCode = 'Country is required.'
-  // State required for US/CA/AU
-  if (['US', 'CA', 'AU'].includes(billing.countryCode) && !billing.adminArea1.trim()) {
-    errs.adminArea1 = 'State/province is required.'
-  }
   billingErrors.value = errs
   return Object.keys(errs).length === 0
 }
@@ -106,9 +103,9 @@ const billingComplete = computed(() =>
   billing.lastName.trim() &&
   billing.addressLine1.trim() &&
   billing.adminArea2.trim() &&
+  billing.adminArea1.trim() &&
   billing.postalCode.trim() &&
-  billing.countryCode &&
-  (!['US', 'CA', 'AU'].includes(billing.countryCode) || billing.adminArea1.trim())
+  billing.countryCode
 )
 
 async function fetchCart() {
@@ -365,7 +362,7 @@ async function submitPayment() {
                 class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
               >
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label for="fname" class="block text-xs font-medium text-gray-500 mb-1.5">First Name</label>
                 <input
@@ -418,7 +415,7 @@ async function submitPayment() {
                 class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
               >
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label for="city" class="block text-xs font-medium text-gray-500 mb-1.5">City</label>
                 <input
@@ -433,10 +430,7 @@ async function submitPayment() {
                 <p v-if="billingErrors.adminArea2" class="text-xs text-red-600 mt-1">{{ billingErrors.adminArea2 }}</p>
               </div>
               <div>
-                <label for="state" class="block text-xs font-medium text-gray-500 mb-1.5">
-                  State / Province
-                  <span v-if="!['US','CA','AU'].includes(billing.countryCode)" class="text-gray-400">(optional)</span>
-                </label>
+                <label for="state" class="block text-xs font-medium text-gray-500 mb-1.5">State / Province</label>
                 <input
                   id="state"
                   v-model="billing.adminArea1"
@@ -449,7 +443,7 @@ async function submitPayment() {
                 <p v-if="billingErrors.adminArea1" class="text-xs text-red-600 mt-1">{{ billingErrors.adminArea1 }}</p>
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label for="postal" class="block text-xs font-medium text-gray-500 mb-1.5">Postal Code</label>
                 <input
@@ -511,7 +505,7 @@ async function submitPayment() {
               <label class="block text-xs font-medium text-gray-500 mb-1.5">Card Number</label>
               <div id="card-number-field" class="paypal-field-container"></div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1.5">Expiry</label>
                 <div id="card-expiry-field" class="paypal-field-container"></div>
@@ -557,7 +551,7 @@ async function submitPayment() {
 
 <style scoped>
 .paypal-field-container {
-  min-height: 55px;
+  min-height: 40px;
   overflow: visible;
 }
 
