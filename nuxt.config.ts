@@ -15,6 +15,12 @@ export default defineNuxtConfig({
     name: 'Navitag',
   },
 
+  runtimeConfig: {
+    public: {
+      paypalClientId: '',
+    },
+  },
+
   sitemap: {
     exclude: [
       '/acct-log',

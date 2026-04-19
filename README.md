@@ -22,7 +22,7 @@ The project has progressed through foundational setup, content migration, authen
 - [x] Integrate Strapi CMS for `/articles/[...slug]` — fetch article by slug, render bodyHtml + customCss inside `.cms` wrapper, SEO meta from Strapi fields, ViewContent pixel event on load
 - [ ] Meta Pixel — wire standard conversion events on non-Strapi pages: `Lead` on signup success, `InitiateCheckout` on plan-checkout load, `Purchase` on renew-complete (with `value` + `currency` from the order). Use `useNuxtApp().$fbq` helper.
 - [ ] Test and debug complete plan top-up flow: top-up → plan-checkout → PayPal card payment → renew-complete
-- [ ] Fix CORS for Medusa token exchange on localhost (backend needs `localhost` in allowed origins, or use Nuxt server proxy)
+- [x] Fix CORS for Medusa token exchange on localhost (backend needs `localhost` in allowed origins, or use Nuxt server proxy)
 - [ ] Build reusable ecom components and/or composables (product search, catalog view)
 - [ ] Setup ecommerce storefront at /shop with MedusaJS backend
 
@@ -46,7 +46,7 @@ The project has progressed through foundational setup, content migration, authen
 - [ ] Consider adding Product schema markup when ecommerce storefront launches
 
 ### Known Issues
-- Medusa token exchange (`POST /auth/customer/firebase`) fails on localhost due to CORS — backend only allows `*.navitag.com` origins
+- _None currently tracked._
 
 ---
 

@@ -3,6 +3,10 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { UNIFIED_API_URL, MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
 import { getRegionId } from '~/utils/countryList'
 
+definePageMeta({
+  layout: false,
+})
+
 const route = useRoute()
 const imei = computed(() => route.params.imei as string)
 
@@ -433,5 +437,7 @@ function onLoginSuccess() {
     </div>
 
     <LoginOverlay v-model="showLogin" :ip-country-code="ipCountryCode" @success="onLoginSuccess" />
+
+    <FooterMinimal />
   </div>
 </template>

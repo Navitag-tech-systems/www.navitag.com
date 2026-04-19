@@ -2,7 +2,11 @@
 import { MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
 import { countries } from '~/utils/countryList'
 
-const PAYPAL_CLIENT_ID = 'AUm1vZU6yaAmUOoxlQKA6NO00CHSqdYrRdOPBrvQEa4JkONw-uVAKv9yeifjUnRo-FtMQGiPddFvSQlA'
+definePageMeta({
+  layout: false,
+})
+
+const PAYPAL_CLIENT_ID = useRuntimeConfig().public.paypalClientId as string
 
 const route = useRoute()
 const cartId = computed(() => route.params.cart_id as string)
@@ -149,6 +153,10 @@ function formatPrice(amount: number, currencyCode: string) {
 // --- PayPal Payment Setup ---
 
 async function initPayment() {
+  if (!PAYPAL_CLIENT_ID) {
+    paymentError.value = 'Payment is not configured. Please contact support.'
+    return
+  }
   if (!email.value) {
     paymentError.value = 'Please enter your email address first.'
     return
@@ -563,6 +571,8 @@ async function submitPayment() {
       </div>
 
     </div>
+
+    <FooterMinimal />
   </div>
 </template>
 
