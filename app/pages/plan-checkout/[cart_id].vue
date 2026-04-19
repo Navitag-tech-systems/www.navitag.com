@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
+import { countries } from '~/utils/countryList'
 
 const PAYPAL_CLIENT_ID = 'AUm1vZU6yaAmUOoxlQKA6NO00CHSqdYrRdOPBrvQEa4JkONw-uVAKv9yeifjUnRo-FtMQGiPddFvSQlA'
 
 const route = useRoute()
 const cartId = computed(() => route.params.cart_id as string)
+
+const { fetchCountryCode } = useBackendSync()
 
 useHead({
   title: 'Navitag - Plan Checkout',
@@ -49,6 +52,23 @@ const paymentLoading = ref(false)
 const paymentError = ref('')
 const paying = ref(false)
 
+// Billing address state (PayPal advanced card fields shape + name for Medusa/PayPal cardholder)
+const billing = reactive({
+  firstName: '',
+  lastName: '',
+  addressLine1: '',
+  addressLine2: '',
+  adminArea2: '', // city
+  adminArea1: '', // state/province
+  postalCode: '',
+  countryCode: '',
+})
+const billingErrors = ref<Record<string, string>>({})
+
+const sortedCountries = computed(() =>
+  [...countries].sort((a, b) => a.name.localeCompare(b.name))
+)
+
 // PayPal card fields instance
 let cardFields: any = null
 
@@ -58,8 +78,38 @@ onMounted(async () => {
     email.value = user.email
     emailPrefilled.value = true
   }
+  // Prefill country from IP detection (non-blocking)
+  fetchCountryCode().then((code) => {
+    if (code && !billing.countryCode) billing.countryCode = code.toUpperCase()
+  }).catch(() => {})
   await fetchCart()
 })
+
+function validateBilling(): boolean {
+  const errs: Record<string, string> = {}
+  if (!billing.firstName.trim()) errs.firstName = 'First name is required.'
+  if (!billing.lastName.trim()) errs.lastName = 'Last name is required.'
+  if (!billing.addressLine1.trim()) errs.addressLine1 = 'Street address is required.'
+  if (!billing.adminArea2.trim()) errs.adminArea2 = 'City is required.'
+  if (!billing.postalCode.trim()) errs.postalCode = 'Postal code is required.'
+  if (!billing.countryCode) errs.countryCode = 'Country is required.'
+  // State required for US/CA/AU
+  if (['US', 'CA', 'AU'].includes(billing.countryCode) && !billing.adminArea1.trim()) {
+    errs.adminArea1 = 'State/province is required.'
+  }
+  billingErrors.value = errs
+  return Object.keys(errs).length === 0
+}
+
+const billingComplete = computed(() =>
+  billing.firstName.trim() &&
+  billing.lastName.trim() &&
+  billing.addressLine1.trim() &&
+  billing.adminArea2.trim() &&
+  billing.postalCode.trim() &&
+  billing.countryCode &&
+  (!['US', 'CA', 'AU'].includes(billing.countryCode) || billing.adminArea1.trim())
+)
 
 async function fetchCart() {
   loading.value = true
@@ -96,17 +146,33 @@ async function initPayment() {
     paymentError.value = 'Please enter your email address first.'
     return
   }
+  if (!validateBilling()) {
+    paymentError.value = 'Please complete your billing address.'
+    return
+  }
 
   paymentLoading.value = true
   paymentError.value = ''
   paymentReady.value = false
 
   try {
-    // 1. Update cart with email
+    // 1. Update cart with email + billing_address (Medusa shape)
     await $fetch(`${MEDUSA_BACKEND_URL}/store/carts/${cartId.value}`, {
       method: 'POST',
       headers,
-      body: { email: email.value },
+      body: {
+        email: email.value,
+        billing_address: {
+          first_name: billing.firstName.trim(),
+          last_name: billing.lastName.trim(),
+          address_1: billing.addressLine1.trim(),
+          address_2: billing.addressLine2.trim() || undefined,
+          city: billing.adminArea2.trim(),
+          province: billing.adminArea1.trim() || undefined,
+          postal_code: billing.postalCode.trim(),
+          country_code: billing.countryCode.toLowerCase(),
+        },
+      },
     })
 
     // 2. Create/get payment collection (upsert — safe to call multiple times)
@@ -170,24 +236,17 @@ async function initPayment() {
         paymentError.value = 'Payment failed. Please check your card details and try again.'
       },
       style: {
-        input: {
-          'font-size': '16px',
-          'font-family': 'system-ui, -apple-system, sans-serif',
-          'color': '#1a1a1a',
-          'padding': '12px',
-        },
         '.invalid': {
           'color': '#dc2626',
         },
       },
     })
 
-    // Render individual fields
+    // Render individual fields (NameField omitted — optional in PayPal and we collect billing name elsewhere)
     if (cardFields.isEligible()) {
       await cardFields.NumberField().render('#card-number-field')
       await cardFields.ExpiryField().render('#card-expiry-field')
       await cardFields.CVVField().render('#card-cvv-field')
-      await cardFields.NameField().render('#card-name-field')
       paymentReady.value = true
     } else {
       throw new Error('Card fields not eligible for this transaction')
@@ -201,12 +260,26 @@ async function initPayment() {
 
 async function submitPayment() {
   if (!cardFields || paying.value) return
+  if (!validateBilling()) {
+    paymentError.value = 'Please complete your billing address.'
+    return
+  }
 
   paying.value = true
   paymentError.value = ''
 
   try {
-    await cardFields.submit()
+    await cardFields.submit({
+      cardholderName: `${billing.firstName.trim()} ${billing.lastName.trim()}`,
+      billingAddress: {
+        addressLine1: billing.addressLine1.trim(),
+        addressLine2: billing.addressLine2.trim() || undefined,
+        adminArea1: billing.adminArea1.trim() || undefined,
+        adminArea2: billing.adminArea2.trim(),
+        postalCode: billing.postalCode.trim(),
+        countryCode: billing.countryCode,
+      },
+    })
   } catch (e: any) {
     paymentError.value = e?.message || 'Payment submission failed. Please try again.'
     paying.value = false
@@ -274,21 +347,138 @@ async function submitPayment() {
           </div>
         </div>
 
-        <!-- Email Address -->
-        <div v-if="!emailPrefilled" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+        <!-- Billing Information -->
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
           <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
-            <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Email Address</h2>
+            <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Billing Information</h2>
           </div>
-          <div class="px-6 py-4">
-            <label for="email" class="block text-xs font-medium text-gray-500 mb-1.5">Email Address</label>
-            <input
-              id="email"
-              v-model="email"
-              type="email"
-              placeholder="you@example.com"
-              :disabled="paymentReady || paymentLoading"
-              class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
-            >
+          <div class="px-6 py-4 space-y-4">
+            <div>
+              <label for="email" class="block text-xs font-medium text-gray-500 mb-1.5">Email Address</label>
+              <input
+                id="email"
+                v-model="email"
+                type="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+                :disabled="paymentReady || paymentLoading"
+                class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+              >
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="fname" class="block text-xs font-medium text-gray-500 mb-1.5">First Name</label>
+                <input
+                  id="fname"
+                  v-model="billing.firstName"
+                  type="text"
+                  autocomplete="given-name"
+                  :disabled="paymentReady || paymentLoading"
+                  class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+                  :class="billingErrors.firstName ? 'border-red-300' : 'border-gray-200'"
+                >
+                <p v-if="billingErrors.firstName" class="text-xs text-red-600 mt-1">{{ billingErrors.firstName }}</p>
+              </div>
+              <div>
+                <label for="lname" class="block text-xs font-medium text-gray-500 mb-1.5">Last Name</label>
+                <input
+                  id="lname"
+                  v-model="billing.lastName"
+                  type="text"
+                  autocomplete="family-name"
+                  :disabled="paymentReady || paymentLoading"
+                  class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+                  :class="billingErrors.lastName ? 'border-red-300' : 'border-gray-200'"
+                >
+                <p v-if="billingErrors.lastName" class="text-xs text-red-600 mt-1">{{ billingErrors.lastName }}</p>
+              </div>
+            </div>
+            <div>
+              <label for="addr1" class="block text-xs font-medium text-gray-500 mb-1.5">Street Address</label>
+              <input
+                id="addr1"
+                v-model="billing.addressLine1"
+                type="text"
+                autocomplete="address-line1"
+                placeholder="123 Main St"
+                :disabled="paymentReady || paymentLoading"
+                class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+                :class="billingErrors.addressLine1 ? 'border-red-300' : 'border-gray-200'"
+              >
+              <p v-if="billingErrors.addressLine1" class="text-xs text-red-600 mt-1">{{ billingErrors.addressLine1 }}</p>
+            </div>
+            <div>
+              <label for="addr2" class="block text-xs font-medium text-gray-500 mb-1.5">Apt, suite, etc. <span class="text-gray-400">(optional)</span></label>
+              <input
+                id="addr2"
+                v-model="billing.addressLine2"
+                type="text"
+                autocomplete="address-line2"
+                :disabled="paymentReady || paymentLoading"
+                class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+              >
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="city" class="block text-xs font-medium text-gray-500 mb-1.5">City</label>
+                <input
+                  id="city"
+                  v-model="billing.adminArea2"
+                  type="text"
+                  autocomplete="address-level2"
+                  :disabled="paymentReady || paymentLoading"
+                  class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+                  :class="billingErrors.adminArea2 ? 'border-red-300' : 'border-gray-200'"
+                >
+                <p v-if="billingErrors.adminArea2" class="text-xs text-red-600 mt-1">{{ billingErrors.adminArea2 }}</p>
+              </div>
+              <div>
+                <label for="state" class="block text-xs font-medium text-gray-500 mb-1.5">
+                  State / Province
+                  <span v-if="!['US','CA','AU'].includes(billing.countryCode)" class="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  id="state"
+                  v-model="billing.adminArea1"
+                  type="text"
+                  autocomplete="address-level1"
+                  :disabled="paymentReady || paymentLoading"
+                  class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+                  :class="billingErrors.adminArea1 ? 'border-red-300' : 'border-gray-200'"
+                >
+                <p v-if="billingErrors.adminArea1" class="text-xs text-red-600 mt-1">{{ billingErrors.adminArea1 }}</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="postal" class="block text-xs font-medium text-gray-500 mb-1.5">Postal Code</label>
+                <input
+                  id="postal"
+                  v-model="billing.postalCode"
+                  type="text"
+                  autocomplete="postal-code"
+                  :disabled="paymentReady || paymentLoading"
+                  class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+                  :class="billingErrors.postalCode ? 'border-red-300' : 'border-gray-200'"
+                >
+                <p v-if="billingErrors.postalCode" class="text-xs text-red-600 mt-1">{{ billingErrors.postalCode }}</p>
+              </div>
+              <div>
+                <label for="country" class="block text-xs font-medium text-gray-500 mb-1.5">Country</label>
+                <select
+                  id="country"
+                  v-model="billing.countryCode"
+                  autocomplete="country"
+                  :disabled="paymentReady || paymentLoading"
+                  class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500 bg-white"
+                  :class="billingErrors.countryCode ? 'border-red-300' : 'border-gray-200'"
+                >
+                  <option value="" disabled>Select country</option>
+                  <option v-for="c in sortedCountries" :key="c.code" :value="c.code">{{ c.name }}</option>
+                </select>
+                <p v-if="billingErrors.countryCode" class="text-xs text-red-600 mt-1">{{ billingErrors.countryCode }}</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -301,7 +491,7 @@ async function submitPayment() {
           <!-- Before payment init: show button to proceed -->
           <div v-if="!paymentReady && !paymentLoading" class="px-6 py-6">
             <button
-              :disabled="!email"
+              :disabled="!email || !billingComplete"
               class="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
               @click="initPayment"
             >
@@ -330,10 +520,6 @@ async function submitPayment() {
                 <label class="block text-xs font-medium text-gray-500 mb-1.5">CVV</label>
                 <div id="card-cvv-field" class="paypal-field-container"></div>
               </div>
-            </div>
-            <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1.5">Cardholder Name</label>
-              <div id="card-name-field" class="paypal-field-container"></div>
             </div>
           </div>
         </div>
@@ -371,16 +557,8 @@ async function submitPayment() {
 
 <style scoped>
 .paypal-field-container {
-  min-height: 60px;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
+  min-height: 55px;
   overflow: visible;
-}
-
-.paypal-field-container :deep(iframe) {
-  height: 100% !important;
-  width: 100% !important;
-  border: none !important;
 }
 
 /* Ensure PayPal 3DS/OTP modal overlay is always on top */
