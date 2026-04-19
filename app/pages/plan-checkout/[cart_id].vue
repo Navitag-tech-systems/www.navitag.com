@@ -69,8 +69,18 @@ const sortedCountries = computed(() =>
   [...countries].sort((a, b) => a.name.localeCompare(b.name))
 )
 
-// PayPal card fields instance
+// PayPal card fields instance + live validity from onChange events
 let cardFields: any = null
+const cardValid = ref(false)
+
+function handleCardChange(state: any) {
+  const f = state?.fields || {}
+  cardValid.value = !!(
+    f.cardNumberField?.isValid &&
+    f.cardExpiryField?.isValid &&
+    f.cardCvvField?.isValid
+  )
+}
 
 onMounted(async () => {
   const user = auth.currentUser
@@ -233,6 +243,12 @@ async function initPayment() {
         paymentError.value = 'Payment failed. Please check your card details and try again.'
       },
       style: {
+        input: {
+          'font-size': '14px',
+          'font-family': 'system-ui, -apple-system, sans-serif',
+          'color': '#1a1a1a',
+          'padding': '6px 10px',
+        },
         '.invalid': {
           'color': '#dc2626',
         },
@@ -241,9 +257,10 @@ async function initPayment() {
 
     // Render individual fields (NameField omitted — optional in PayPal and we collect billing name elsewhere)
     if (cardFields.isEligible()) {
-      await cardFields.NumberField().render('#card-number-field')
-      await cardFields.ExpiryField().render('#card-expiry-field')
-      await cardFields.CVVField().render('#card-cvv-field')
+      const inputEvents = { onChange: handleCardChange }
+      await cardFields.NumberField({ inputEvents }).render('#card-number-field')
+      await cardFields.ExpiryField({ inputEvents }).render('#card-expiry-field')
+      await cardFields.CVVField({ inputEvents }).render('#card-cvv-field')
       paymentReady.value = true
     } else {
       throw new Error('Card fields not eligible for this transaction')
@@ -505,7 +522,7 @@ async function submitPayment() {
               <label class="block text-xs font-medium text-gray-500 mb-1.5">Card Number</label>
               <div id="card-number-field" class="paypal-field-container"></div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1.5">Expiry</label>
                 <div id="card-expiry-field" class="paypal-field-container"></div>
@@ -526,7 +543,7 @@ async function submitPayment() {
         <!-- Pay Button -->
         <button
           v-if="paymentReady"
-          :disabled="paying"
+          :disabled="paying || !cardValid || !billingComplete"
           class="w-full py-4 rounded-xl bg-navitag-blue text-white font-bold text-lg hover:bg-opacity-90 transition shadow-lg shadow-navitag-blue/20 disabled:opacity-40 disabled:cursor-not-allowed"
           @click="submitPayment"
         >
@@ -551,8 +568,12 @@ async function submitPayment() {
 
 <style scoped>
 .paypal-field-container {
-  min-height: 40px;
-  overflow: visible;
+  height: 44px;
+  overflow: hidden;
+}
+
+.paypal-field-container :deep(iframe) {
+  height: 44px !important;
 }
 
 /* Ensure PayPal 3DS/OTP modal overlay is always on top */
