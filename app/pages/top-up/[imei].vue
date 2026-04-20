@@ -235,15 +235,15 @@ async function buyPlan(productId: string) {
   try {
     const { medusaFetch } = useMedusa()
 
-    // 1. Load the Medusa customer to satisfy the cart contract (customer_id + email)
+    // 1. Load Medusa customer to resolve canonical email for the cart
     const meRes = await medusaFetch<{ customer: any }>('/store/customers/me')
-    const customer = meRes.customer
-    const customerEmail = customer?.email || firebaseUser.email
-    if (!customer?.id || !customerEmail) {
-      throw new Error('Unable to resolve customer record for checkout.')
+    const customerEmail = meRes.customer?.email || firebaseUser.email
+    if (!customerEmail) {
+      throw new Error('Unable to resolve customer email for checkout.')
     }
 
-    // 2. Create cart — must carry customer_id, email, metadata.firebase_uid per storefront contract
+    // 2. Create cart — JWT attaches customer automatically; we must still
+    //    supply email and metadata.firebase_uid per storefront contract
     const cartMeta: Record<string, string> = {
       firebase_uid: firebaseUser.uid,
       device_imei: imei.value,
@@ -254,7 +254,6 @@ async function buyPlan(productId: string) {
       method: 'POST',
       body: {
         region_id: regionId.value,
-        customer_id: customer.id,
         email: customerEmail,
         metadata: cartMeta,
       },
