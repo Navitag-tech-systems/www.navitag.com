@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
 import { countries } from '~/utils/countryList'
 
 definePageMeta({
@@ -12,15 +11,11 @@ const route = useRoute()
 const cartId = computed(() => route.params.cart_id as string)
 
 const { fetchCountryCode } = useBackendSync()
+const { medusaFetch } = useMedusa()
 
 useHead({
   title: 'Navitag - Plan Checkout',
 })
-
-const headers: Record<string, string> = {
-  'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
-  'Content-Type': 'application/json',
-}
 
 function loadPayPalSDK(clientToken: string, currency: string): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -126,9 +121,7 @@ async function fetchCart() {
   loading.value = true
   error.value = ''
   try {
-    const res = await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts/${cartId.value}`, {
-      headers,
-    })
+    const res = await medusaFetch<{ cart: any }>(`/store/carts/${cartId.value}`)
     cart.value = res.cart
     if (res.cart.email) {
       email.value = res.cart.email
@@ -172,9 +165,9 @@ async function initPayment() {
 
   try {
     // 1. Update cart with email + billing_address (Medusa shape)
-    await $fetch(`${MEDUSA_BACKEND_URL}/store/carts/${cartId.value}`, {
+    const firebaseUid = auth.currentUser?.uid
+    await medusaFetch(`/store/carts/${cartId.value}`, {
       method: 'POST',
-      headers,
       body: {
         email: email.value,
         billing_address: {
@@ -187,21 +180,20 @@ async function initPayment() {
           postal_code: billing.postalCode.trim(),
           country_code: billing.countryCode.toLowerCase(),
         },
+        ...(firebaseUid ? { metadata: { firebase_uid: firebaseUid } } : {}),
       },
     })
 
     // 2. Create/get payment collection (upsert — safe to call multiple times)
-    const collectionRes = await $fetch<{ payment_collection: any }>(`${MEDUSA_BACKEND_URL}/store/payment-collections`, {
+    const collectionRes = await medusaFetch<{ payment_collection: any }>('/store/payment-collections', {
       method: 'POST',
-      headers,
       body: { cart_id: cartId.value },
     })
     const paymentCollectionId = collectionRes.payment_collection.id
 
     // 3. Init PayPal payment session
-    const sessionRes = await $fetch<{ payment_collection: any }>(`${MEDUSA_BACKEND_URL}/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
+    const sessionRes = await medusaFetch<{ payment_collection: any }>(`/store/payment-collections/${paymentCollectionId}/payment-sessions`, {
       method: 'POST',
-      headers,
       body: { provider_id: 'pp_paypal_paypal' },
     })
     const session = sessionRes.payment_collection.payment_sessions.find(
@@ -210,9 +202,8 @@ async function initPayment() {
     const paypalOrderId = session.data.id
 
     // 4. Get client token
-    const tokenRes = await $fetch<{ client_token: string }>(`${MEDUSA_BACKEND_URL}/store/paypal/client-token`, {
+    const tokenRes = await medusaFetch<{ client_token: string }>('/store/paypal/client-token', {
       method: 'POST',
-      headers,
       body: {},
     })
     const clientToken = tokenRes.client_token
@@ -231,9 +222,8 @@ async function initPayment() {
         // PayPal approved — complete the cart
         try {
           paying.value = true
-          const result = await $fetch<{ type: string; order?: any; error?: any }>(`${MEDUSA_BACKEND_URL}/store/carts/${cartId.value}/complete`, {
+          const result = await medusaFetch<{ type: string; order?: any; error?: any }>(`/store/carts/${cartId.value}/complete`, {
             method: 'POST',
-            headers,
           })
           if (result.type === 'order') {
             navigateTo(`/renew-complete/${result.order.id}`)
@@ -311,7 +301,7 @@ async function submitPayment() {
 
 <template>
   <div class="min-h-screen bg-navitag-bg py-12">
-    <div class="container mx-auto px-6 max-w-lg">
+    <div class="container mx-auto px-6 max-w-xl">
 
       <!-- Loading -->
       <div v-if="loading" class="text-center py-20">

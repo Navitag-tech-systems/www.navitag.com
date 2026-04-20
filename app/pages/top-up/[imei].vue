@@ -223,32 +223,47 @@ async function buyPlan(productId: string) {
   const variantId = selectedVariants.value[productId]
   if (!variantId) return
 
+  const firebaseUser = auth.currentUser
+  if (!firebaseUser) {
+    showLogin.value = true
+    return
+  }
+
   cartLoading.value = true
   cartError.value = ''
 
   try {
-    const headers: Record<string, string> = {
-      'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
+    const { medusaFetch } = useMedusa()
+
+    // 1. Load the Medusa customer to satisfy the cart contract (customer_id + email)
+    const meRes = await medusaFetch<{ customer: any }>('/store/customers/me')
+    const customer = meRes.customer
+    const customerEmail = customer?.email || firebaseUser.email
+    if (!customer?.id || !customerEmail) {
+      throw new Error('Unable to resolve customer record for checkout.')
     }
 
-    // 1. Create cart with device IMEI and country in metadata
-    const cartMeta: Record<string, string> = { device_imei: imei.value }
+    // 2. Create cart — must carry customer_id, email, metadata.firebase_uid per storefront contract
+    const cartMeta: Record<string, string> = {
+      firebase_uid: firebaseUser.uid,
+      device_imei: imei.value,
+    }
     if (countryCode.value) cartMeta.country_code = countryCode.value
 
-    const cartRes = await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts`, {
+    const cartRes = await medusaFetch<{ cart: any }>('/store/carts', {
       method: 'POST',
-      headers,
       body: {
         region_id: regionId.value,
+        customer_id: customer.id,
+        email: customerEmail,
         metadata: cartMeta,
       },
     })
     const cartId = cartRes.cart.id
 
-    // 2. Add line item with IMEI metadata
-    await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts/${cartId}/line-items`, {
+    // 3. Add line item with IMEI metadata
+    await medusaFetch(`/store/carts/${cartId}/line-items`, {
       method: 'POST',
-      headers,
       body: {
         variant_id: variantId,
         quantity: 1,
@@ -256,14 +271,13 @@ async function buyPlan(productId: string) {
       },
     })
 
-    // 3. Add digital delivery shipping method
-    await $fetch<{ cart: any }>(`${MEDUSA_BACKEND_URL}/store/carts/${cartId}/shipping-methods`, {
+    // 4. Add digital delivery shipping method
+    await medusaFetch(`/store/carts/${cartId}/shipping-methods`, {
       method: 'POST',
-      headers,
       body: { option_id: 'so_01KNNDCWCEWGBC8BA71HG92T10' },
     })
 
-    // 4. Navigate to checkout
+    // 5. Navigate to checkout
     navigateTo(`/plan-checkout/${cartId}`)
   } catch (e: any) {
     cartError.value = e?.data?.message || e?.message || 'Failed to create cart. Please try again.'
