@@ -11,7 +11,7 @@ export default defineNuxtConfig({
   ],
 
   site: {
-    url: 'https://www.navitag.com',
+    url: 'https://navitag.com',
     name: 'Navitag',
   },
 
