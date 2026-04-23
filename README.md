@@ -25,6 +25,10 @@ The project has progressed through foundational setup, content migration, authen
 - [ ] `/top-up/:imei` assumes the user already has an account — the page is only reached via a device-settings link in the app, so there's no direct nav to it from the public site. If a new user lands here and signs up via the overlay (especially SSO, which silently creates a Firebase account on first use), the UX breaks: `/v1/inventory/check` returns 404 ("Device not found or not linked to your account") and the user is stuck with no linking path. Decide: redirect new signups to onboarding, block account creation from the overlay, or add inline IMEI-linking.
 - [ ] Build reusable ecom components and/or composables (product search, catalog view)
 - [ ] Setup ecommerce storefront at /shop with MedusaJS backend
+- [ ] On route `/`, show a modal informing the visitor they are being redirected if their IP-detected country has a dedicated regional page (e.g. `/ph`). Needs: IP→country resolution (reuse existing `fetchCountryCode` from `useBackendSync`), country→regional-route map, dismissible modal with countdown/redirect.
+- [ ] Build `/pricing` page driven by Medusa prices with regional pricing by IP location (fallback to account country code when logged in). Use Medusa regions + price lists; surface the active region in the UI.
+- [ ] Retail-focused site theme overhaul: rework overall theme toward a retail storefront feel, keep only B2B-facing pages for business customers, and focus product messaging on the single current product. Update SEO (titles, descriptions, og copy, structured data) to match the retail positioning.
+- [ ] Add a "How it works" explainer page walking through the purchase model: (1) buy the device, (2) buy prepaid plans as needed, (3) monthly subscriptions are enterprise-only. Clarify retail = one-time device purchase + pay-as-you-go plans; subscriptions are a B2B-only offering.
 
 #### SEO TODO — This Week
 - [ ] Add global og:image to `nuxt.config.ts` and `ogImage` to homepage + `/ph` pages (needs brand social card at 1200x630, e.g. `/og-image.png`)
