@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, OAuthProvider } from 'firebase/auth'
 import { MEDUSA_BACKEND_URL } from '~/variables'
 import { countries } from '~/utils/countryList'
 
@@ -91,23 +91,6 @@ async function signupWithGoogle() {
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google sign up failed'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function signupWithFacebook() {
-  loading.value = true
-  error.value = ''
-  try {
-    const cred = await signInWithPopup(auth, new FacebookAuthProvider())
-    await Promise.all([
-      exchangeMedusaToken(cred.user),
-      backendSync(cred.user, null, selectedCountry.value),
-    ])
-    navigateTo('/')
-  } catch (e: any) {
-    error.value = e?.message?.replace('Firebase: ', '') || 'Facebook sign up failed'
   } finally {
     loading.value = false
   }
@@ -269,14 +252,6 @@ async function signupWithApple() {
             title="Google"
           >
             <i class="fab fa-google text-lg"></i>
-          </button>
-          <button
-            :disabled="loading"
-            class="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition disabled:opacity-50"
-            @click="signupWithFacebook"
-            title="Facebook"
-          >
-            <i class="fab fa-facebook-f text-lg"></i>
           </button>
           <button
             :disabled="loading"

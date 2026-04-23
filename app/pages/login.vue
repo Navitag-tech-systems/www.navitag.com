@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from 'firebase/auth'
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, OAuthProvider } from 'firebase/auth'
 import { MEDUSA_BACKEND_URL } from '~/variables'
 
 useSeoMeta({
@@ -54,23 +54,6 @@ async function loginWithGoogle() {
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google login failed'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function loginWithFacebook() {
-  loading.value = true
-  error.value = ''
-  try {
-    const cred = await signInWithPopup(auth, new FacebookAuthProvider())
-    await Promise.all([
-      exchangeMedusaToken(cred.user),
-      backendSync(cred.user),
-    ])
-    navigateTo('/')
-  } catch (e: any) {
-    error.value = e?.message?.replace('Firebase: ', '') || 'Facebook login failed'
   } finally {
     loading.value = false
   }
@@ -181,14 +164,6 @@ async function loginWithApple() {
             title="Google"
           >
             <i class="fab fa-google text-lg"></i>
-          </button>
-          <button
-            :disabled="loading"
-            class="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition disabled:opacity-50"
-            @click="loginWithFacebook"
-            title="Facebook"
-          >
-            <i class="fab fa-facebook-f text-lg"></i>
           </button>
           <button
             :disabled="loading"
