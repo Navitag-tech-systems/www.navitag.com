@@ -55,10 +55,15 @@ resolves). Used to build retargeting audiences and measure surface reach.
 | `/contact` | `contact` | `contact` | inferred from `?subject=` | |
 | `/ph/contact` | `contact_ph` | `contact` | inferred from `?subject=` | |
 | `/ph/distribution` | `distribution_ph` | `distribution` | `b2c` | |
-| `/login` | `login` | `auth` | `b2c` | |
+| `/login` | `login` | `auth` | inferred from `?return=` | Login is shared by B2C consumers and B2B fleet ops; audience pulls from `?return=/business` etc. |
 | `/signup` | `signup` | `auth` | inferred from `?intent=` / `?return=` | |
+| `/forgot-password` | `forgot_password` | `auth` | route-inferred (b2c default) | Shared surface — no audience hint available; treated as b2c by default. |
+| `/my-account` | `my_account` | `account` | route-inferred (b2c default) | Shared surface; not conversion-shaped. |
+| `/privacy-policy` | `privacy_policy` | `legal` | route-inferred (b2c default) | |
 | `/shop/product/[slug]` | (product title) | `product` | `b2c` | `content_ids: [variantId]`, `value`, `currency`, `content_type: 'product'` |
+| `/shop/shipping` | `shop_shipping` | `checkout` | `b2c` | Pre-`InitiateCheckout` surface — captures shipping-step visitors who bail before submit. |
 | `/top-up/[imei]` | `top_up` | `plan_renewal` | `b2c` | `content_type: 'data_plan_list'`, `imei` |
+| `/invite/view/[token]` | `invite_view` | `invite` | route-inferred | Tracker share-claim landing. `content_type: 'tracker_share'`, `content_ids: [token]` |
 | `/articles/[...slug]` | (article title) | (article category) | `b2c` | Already wired pre-overhaul. Strapi-side per-article CTAs use `data-pixel-*` attrs. |
 
 ---
@@ -80,6 +85,9 @@ Fires when the user actually completes a step.
 | Email signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:91` | inferred from `?intent` / `?return` | `method:'email'`, `lead_type` (`business_signup`/`consumer_signup`) |
 | Google signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:115` | inferred | `method:'google'`, `lead_type` |
 | Apple signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:149` | inferred | `method:'apple'`, `lead_type` |
+| Login success — `/login` page | `Custom: Login` | `app/pages/login.vue` | inferred from `?return=` | `method: 'email' \| 'google' \| 'apple'` |
+| Login success — `LoginOverlay` | `Custom: Login` | `app/components/LoginOverlay.vue` | route-inferred at fire time | Fires from /shop, /top-up, /invite. Same `method` param. |
+| Invite claim success | `SubmitApplication` + parallel `LeadB2C`/`LeadB2B` | `app/pages/invite/view/[token].vue` | route-inferred | `content_type: 'tracker_share'`, `num_items: granted_devices.length`, `lead_type: 'invite_claim'` |
 
 ---
 
@@ -145,9 +153,30 @@ Adding the attributes to any element automatically registers it.
 |---|---|---|---|---|
 | Shopee outbound | `Lead` + `LeadB2C` | `b2c` | `retailer_shopee_ph` | `retailer_outbound` |
 | Lazada outbound | `Lead` + `LeadB2C` | `b2c` | `retailer_lazada_ph` | `retailer_outbound` |
+| Navitag Direct → /shop | `Lead` + `LeadB2C` | `b2c` | `retailer_navitag_direct_ph` | `retailer_outbound` |
+| Retail map link (Quirino, Cebu, Mandaue, Basak, Tabunok, Talisay, Carcar) | `FindLocation` | `b2c` | `retailer_qhas_novaliches`, `retailer_cmap_*` | — |
 | "Contact Fleet Sales" (mailto bulk pricing) | `Contact` + `LeadB2B` | **`b2b`** | `distribution_ph_bulk_sales` | `reseller_inquiry` |
+| "Become a Reseller" → /ph/contact | `Contact` + `LeadB2B` | **`b2b`** | `distribution_ph_reseller` | `reseller_inquiry` |
 
-### 5.7 Articles (Strapi-managed)
+### 5.7 PH Footer outbounds — `app/components/FooterRegional.vue` (driven by `app/config/regions.ts`)
+
+Visible on every PH layout page, not just `/ph/distribution`. Tagged via the `pixel`
+field on `RegionFooterLink` so adding a new outbound in the config registers tracking
+automatically.
+
+| CTA | Event | Audience | `content_name` | `lead_type` |
+|---|---|---|---|---|
+| Shopee (footer) | `Lead` + `LeadB2C` | `b2c` | `retailer_shopee_ph_footer` | `retailer_outbound` |
+| Lazada (footer) | `Lead` + `LeadB2C` | `b2c` | `retailer_lazada_ph_footer` | `retailer_outbound` |
+| For Business (footer) | `Custom: FooterCTA` | **`b2b`** | `footer_for_business_ph` | — |
+
+### 5.8 Region banner — `app/components/RegionBanner.vue`
+
+| CTA | Event | Audience | `content_name` |
+|---|---|---|---|
+| "Go to {Region}" suggestion link | `Custom: RegionSwitch` | route-inferred | `region_switch_to_<code>` (e.g. `region_switch_to_ph`) |
+
+### 5.9 Articles (Strapi-managed)
 
 `/articles/[...slug]` is rendered via `v-html="article.bodyHtml"`. The
 plugin's global click listener picks up clicks on any DOM element, so
@@ -211,5 +240,5 @@ In **Ads Manager → Audiences → Custom Audience → Website**:
 
 ---
 
-_Last updated: 2026-04-29. Maintained alongside `app/plugins/meta-pixel.client.ts`
+_Last updated: 2026-04-29 (Login + invite + footer + hygiene fires audit). Maintained alongside `app/plugins/meta-pixel.client.ts`
 and `app/composables/useAudience.ts`._

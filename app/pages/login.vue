@@ -7,19 +7,42 @@ useSeoMeta({
   robots: 'noindex, nofollow',
 })
 
+const { $fbq } = useNuxtApp()
+const route = useRoute()
+
+// Login is shared by B2C consumers and B2B fleet operators. Audience is
+// inferred from `?return=` (e.g. `/login?return=/business` → b2b) so we
+// don't pollute either pool with the wrong segment.
+const returnTo = computed(() => {
+  const raw = route.query.return
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (typeof value !== 'string') return '/'
+  if (!value.startsWith('/') || value.startsWith('//')) return '/'
+  return value
+})
+const loginAudience = computed(() => inferAudience({ returnTo: returnTo.value }))
+
 if (import.meta.client) {
-  const { $fbq: $fbqInit } = useNuxtApp()
   onMounted(() => {
-    $fbqInit('ViewContent', {
+    $fbq('ViewContent', {
       content_name: 'login',
       content_category: 'auth',
-      audience: 'b2c',
+      audience: loginAudience.value,
     })
   })
 }
 
 const { auth } = useFirebase()
 const { backendSync } = useBackendSync()
+
+function fireLogin(method: 'email' | 'google' | 'apple') {
+  $fbq.custom('Login', {
+    method,
+    content_name: `${method}_login`,
+    content_category: 'auth',
+    audience: loginAudience.value,
+  })
+}
 
 const email = ref('')
 const password = ref('')
@@ -45,6 +68,7 @@ async function loginWithEmail() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user),
     ])
+    fireLogin('email')
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Login failed'
@@ -62,6 +86,7 @@ async function loginWithGoogle() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user),
     ])
+    fireLogin('google')
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google login failed'
@@ -89,6 +114,7 @@ async function loginWithApple() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user),
     ])
+    fireLogin('apple')
     navigateTo('/')
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Apple login failed'

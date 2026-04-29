@@ -118,7 +118,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 - [x] ~~Meta Pixel — frontend CAPI mirror dispatch + Advanced Matching + `_fbp`/`_fbc` capture + `Purchase` `contents[]` enrichment + cart-metadata stuffing for server-side dedup (done; backend implementation spec in [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md))~~
 - [ ] **Backend** — implement `POST /v1/meta/capi` on `api.navitag.net` (PHP) and `order.placed` Meta CAPI subscriber on Medusa v2. Spec: [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md). Requires Meta CAPI access token + domain verification.
 - [ ] Meta Pixel — move `AddPaymentInfo` trigger from "card fields rendered" to "first card-field input" so the signal correlates with intent, not infrastructure load.
-- [ ] Meta Pixel — `Login` custom event on successful sign-in (audience-tagged) for retention audiences.
+- [x] ~~Meta Pixel — `Login` custom event on successful sign-in (audience-tagged) for retention audiences~~ (wired in `/login` and `LoginOverlay`; audience inferred from `?return=` on /login, route-inferred elsewhere)
 <!-- Consent gate intentionally not implemented — see "Known edge cases" above. Do not re-add without explicit owner sign-off. -->
 
 #### SEO

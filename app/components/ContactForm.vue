@@ -83,7 +83,7 @@ async function submit() {
       content_category: audience === 'b2b' ? 'b2b_contact' : 'b2c_contact',
       audience,
       lead_type: audience === 'b2b' ? 'business_inquiry' : 'consumer_inquiry',
-      country_code: countryCode.value,
+      ...(countryCode.value ? { country_code: countryCode.value } : {}),
     })
     emit('success', { name: payload.name, email: payload.email })
     name.value = ''

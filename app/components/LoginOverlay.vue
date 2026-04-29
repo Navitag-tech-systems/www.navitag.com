@@ -17,6 +17,23 @@ const emit = defineEmits<{
 
 const { auth } = useFirebase()
 const { backendSync } = useBackendSync()
+const { $fbq } = useNuxtApp()
+
+// Overlay is mounted across B2C surfaces (/shop, /top-up) and the invite
+// claim page, which can be either. Audience is inferred from the host
+// route at fire time — pages with B2B intent (e.g. invite from a fleet
+// account) can pass an explicit override via `audience` prop if needed.
+
+function fireLogin(method: 'email' | 'google' | 'apple') {
+  $fbq.custom('Login', {
+    method,
+    content_name: `${method}_login`,
+    content_category: 'auth',
+    // audience left to plugin route-inference — this is correct for /shop
+    // and /top-up. /invite/view is mixed and the page sets a more specific
+    // event itself on claim.
+  })
+}
 
 const email = ref('')
 const password = ref('')
@@ -59,6 +76,7 @@ async function loginWithEmail() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, null, props.ipCountryCode),
     ])
+    fireLogin('email')
     onSuccess()
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Login failed'
@@ -76,6 +94,7 @@ async function loginWithGoogle() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, null, props.ipCountryCode),
     ])
+    fireLogin('google')
     onSuccess()
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google login failed'
@@ -103,6 +122,7 @@ async function loginWithApple() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, null, props.ipCountryCode),
     ])
+    fireLogin('apple')
     onSuccess()
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Apple login failed'

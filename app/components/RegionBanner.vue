@@ -127,6 +127,10 @@ onBeforeUnmount(() => {
           <NuxtLink
             :to="suggestedHref"
             class="font-semibold text-white underline underline-offset-2 decoration-white/40 hover:decoration-white transition"
+            data-pixel-event="Custom"
+            data-pixel-custom-name="RegionSwitch"
+            data-pixel-content-category="region_switch"
+            :data-pixel-content-name="`region_switch_to_${suggestedRegion?.code}`"
             @click="visible = false"
           >
             {{ suggestedRegion?.name }}

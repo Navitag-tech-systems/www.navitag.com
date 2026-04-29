@@ -48,6 +48,12 @@ const year = new Date().getFullYear()
                 target="_blank"
                 rel="noopener noreferrer"
                 class="text-gray-600 hover:text-navitag-blue transition-colors"
+                :data-pixel-event="link.pixel?.event"
+                :data-pixel-custom-name="link.pixel?.customName"
+                :data-pixel-content-name="link.pixel?.contentName"
+                :data-pixel-content-category="link.pixel?.contentCategory"
+                :data-pixel-audience="link.pixel?.audience"
+                :data-pixel-lead-type="link.pixel?.leadType"
               >
                 {{ link.label }}
                 <i class="fas fa-arrow-up-right-from-square text-[10px] ml-1 opacity-60"></i>
@@ -56,6 +62,12 @@ const year = new Date().getFullYear()
                 v-else-if="link.to"
                 :to="link.to"
                 class="text-gray-600 hover:text-navitag-blue transition-colors"
+                :data-pixel-event="link.pixel?.event"
+                :data-pixel-custom-name="link.pixel?.customName"
+                :data-pixel-content-name="link.pixel?.contentName"
+                :data-pixel-content-category="link.pixel?.contentCategory"
+                :data-pixel-audience="link.pixel?.audience"
+                :data-pixel-lead-type="link.pixel?.leadType"
               >
                 {{ link.label }}
               </NuxtLink>
@@ -63,6 +75,12 @@ const year = new Date().getFullYear()
                 v-else-if="link.href"
                 :href="link.href"
                 class="text-gray-600 hover:text-navitag-blue transition-colors"
+                :data-pixel-event="link.pixel?.event"
+                :data-pixel-custom-name="link.pixel?.customName"
+                :data-pixel-content-name="link.pixel?.contentName"
+                :data-pixel-content-category="link.pixel?.contentCategory"
+                :data-pixel-audience="link.pixel?.audience"
+                :data-pixel-lead-type="link.pixel?.leadType"
               >
                 {{ link.label }}
               </a>

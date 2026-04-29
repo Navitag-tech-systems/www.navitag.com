@@ -22,6 +22,16 @@ const { $fbq } = useNuxtApp()
 const isAuthed = computed(() => basic.isLoggedIn)
 const showLogin = ref(false)
 
+if (import.meta.client) {
+  onMounted(() => {
+    $fbq('ViewContent', {
+      content_name: 'shop_shipping',
+      content_category: 'checkout',
+      audience: 'b2c',
+    })
+  })
+}
+
 // ─── Shipping address ────────────────────────────────────────────────
 const ship = ref({
   name: '',

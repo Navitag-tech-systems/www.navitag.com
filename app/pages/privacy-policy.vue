@@ -3,6 +3,16 @@ useSeoMeta({
   title: 'Navitag - Privacy Policy',
   robots: 'index, follow',
 })
+
+if (import.meta.client) {
+  const { $fbq } = useNuxtApp()
+  onMounted(() => {
+    $fbq('ViewContent', {
+      content_name: 'privacy_policy',
+      content_category: 'legal',
+    })
+  })
+}
 </script>
 
 <template>

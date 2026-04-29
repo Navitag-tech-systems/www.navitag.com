@@ -10,6 +10,19 @@ export interface RegionFooterLink {
   to?: string
   href?: string
   external?: boolean
+  /** Optional Meta Pixel attribution. When set, FooterRegional emits
+   *  data-pixel-* attributes so the plugin's delegated click listener
+   *  fires the configured event. */
+  pixel?: {
+    /** Standard event name (Lead, Contact, etc) or 'Custom'. */
+    event: string
+    /** Required when event === 'Custom' — the trackCustom name. */
+    customName?: string
+    contentName: string
+    contentCategory?: string
+    audience?: 'b2b' | 'b2c'
+    leadType?: string
+  }
 }
 
 export interface RegionFooterGroup {
@@ -81,14 +94,45 @@ export const REGIONS: Record<string, RegionConfig> = {
       { label: 'Data Plans', to: '/ph/data-plans' },
       { label: 'For Business', to: '/ph/business' },
     ],
-    cta: { label: 'Contact Local Sales', href: '#contact' },
+    cta: { label: 'Contact Local Sales', href: '/ph/contact' },
     footerGroups: [
       {
         heading: 'Shopping',
         links: [
-          { label: 'Shopee', href: 'https://shopee.ph/ahw7ln8f3c', external: true },
-          { label: 'Lazada', href: 'https://www.lazada.com.ph/shop/navitag-tech?path=index.htm&lang=en', external: true },
-          { label: 'For Business', to: '/ph/business' },
+          {
+            label: 'Shopee',
+            href: 'https://shopee.ph/product/1765622736/51207409880',
+            external: true,
+            pixel: {
+              event: 'Lead',
+              contentName: 'retailer_shopee_ph_footer',
+              contentCategory: 'retailer_outbound',
+              audience: 'b2c',
+              leadType: 'retailer_outbound',
+            },
+          },
+          {
+            label: 'Lazada',
+            href: 'https://www.lazada.com.ph/products/i15437871676.html',
+            external: true,
+            pixel: {
+              event: 'Lead',
+              contentName: 'retailer_lazada_ph_footer',
+              contentCategory: 'retailer_outbound',
+              audience: 'b2c',
+              leadType: 'retailer_outbound',
+            },
+          },
+          {
+            label: 'For Business',
+            to: '/ph/business',
+            pixel: {
+              event: 'Custom',
+              customName: 'FooterCTA',
+              contentName: 'footer_for_business_ph',
+              audience: 'b2b',
+            },
+          },
         ],
       },
       {

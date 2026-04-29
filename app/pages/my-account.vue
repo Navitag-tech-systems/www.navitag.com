@@ -9,6 +9,19 @@ useHead({
 const basic = useBasicStore()
 const user = computed(() => basic.user)
 const authChecked = computed(() => basic.authResolved)
+const { $fbq } = useNuxtApp()
+
+if (import.meta.client) {
+  onMounted(() => {
+    // Account is shared by B2C and B2B users — leave audience to the
+    // plugin's route-inference (which falls back to b2c here; that's
+    // acceptable as the surface itself isn't conversion-shaped).
+    $fbq('ViewContent', {
+      content_name: 'my_account',
+      content_category: 'account',
+    })
+  })
+}
 
 async function logout() {
   await basic.logout()

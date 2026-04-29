@@ -68,20 +68,17 @@ if (import.meta.client) {
           </div>
         </a>
 
-        <!-- Navitag Direct (Coming Soon) -->
-        <div class="block bg-gray-50 p-8 rounded-3xl border border-gray-200 text-center flex flex-col h-full relative overflow-hidden">
-          <div class="absolute top-4 right-4 bg-gray-900 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">
-            Soon
+        <!-- Navitag Direct -->
+        <NuxtLink to="/shop" class="group block bg-white p-8 rounded-3xl border-2 border-transparent hover:border-navitag-blue shadow-lg shadow-gray-200/50 hover:shadow-navitag-blue/20 transition-all text-center flex flex-col h-full" data-pixel-event="Lead" data-pixel-audience="b2c" data-pixel-content-name="retailer_navitag_direct_ph" data-pixel-content-category="retailer_outbound" data-pixel-lead-type="retailer_outbound">
+          <div class="w-16 h-16 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <img src="/logo-sm.png" alt="Navitag Logo" class="h-8 w-auto">
           </div>
-          <div class="w-16 h-16 mx-auto rounded-full bg-gray-200 flex items-center justify-center mb-6 opacity-50">
-            <img src="/logo-sm.png" alt="Navitag Logo" class="h-8 w-auto grayscale">
+          <h3 class="text-xl font-bold text-gray-950 mb-2">Navitag Direct</h3>
+          <p class="text-sm text-gray-600 mb-8 flex-grow">Buy directly from our official online store with seamless local checkout and full warranty support.</p>
+          <div class="inline-block px-6 py-2.5 rounded-full bg-navitag-blue text-white text-sm font-semibold w-full">
+            Open Online Store <i class="fas fa-arrow-right ml-1 text-xs"></i>
           </div>
-          <h3 class="text-xl font-bold text-gray-500 mb-2">Navitag Direct</h3>
-          <p class="text-sm text-gray-500 mb-8 flex-grow">Our official direct-to-consumer online portal is launching soon for seamless local checkout.</p>
-          <div class="inline-block px-6 py-2.5 rounded-full bg-gray-200 text-gray-500 text-sm font-semibold w-full cursor-not-allowed">
-            Launching Soon
-          </div>
-        </div>
+        </NuxtLink>
       </div>
     </div>
   </section>
@@ -90,7 +87,7 @@ if (import.meta.client) {
   <section class="py-20 bg-gray-50 border-t border-gray-100">
     <div class="container mx-auto px-6 max-w-4xl">
       <div class="text-center mb-12">
-        <h2 class="text-2xl font-extrabold tracking-tight text-gray-950 mb-4">Authorized Installation Partners</h2>
+        <h2 class="text-2xl font-extrabold tracking-tight text-gray-950 mb-4">Authorized Retail Partners</h2>
         <p class="text-gray-600 max-w-2xl mx-auto">Prefer professional installation for your vehicle dashcams or stealth trackers? Visit our certified local partners across Southeast Asia.</p>
       </div>
 
@@ -114,7 +111,7 @@ if (import.meta.client) {
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                   <p class="text-sm font-semibold text-gray-800">Main Branch</p>
                   <p class="text-sm text-gray-600 mb-3">761 Quirino Hwy, Novaliches, Quezon City, 1116 Metro Manila</p>
-                  <a href="https://maps.app.goo.gl/9sAfmkP3nB5mDXwS9" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline">
+                  <a href="https://maps.app.goo.gl/9sAfmkP3nB5mDXwS9" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline" data-pixel-event="FindLocation" data-pixel-audience="b2c" data-pixel-content-name="retailer_qhas_novaliches" data-pixel-content-category="retail_locator">
                     <i class="fas fa-map-marked-alt mr-1"></i> View on Map
                   </a>
                 </div>
@@ -138,42 +135,42 @@ if (import.meta.client) {
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col">
                   <p class="text-sm font-semibold text-gray-800">Cebu City Main Branch</p>
                   <p class="text-sm text-gray-600 mb-3 flex-grow">B20 Gochan Bldg., Leon Kilat Street, Kalubihan, Cebu City, Cebu 6000</p>
-                  <a href="https://maps.google.com/?q=10.293764457655655,123.89688098043497" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto">
+                  <a href="https://maps.google.com/?q=10.293764457655655,123.89688098043497" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto" data-pixel-event="FindLocation" data-pixel-audience="b2c" data-pixel-content-name="retailer_cmap_cebu_city_main" data-pixel-content-category="retail_locator">
                     <i class="fas fa-map-marked-alt mr-1"></i> View on Map
                   </a>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col">
                   <p class="text-sm font-semibold text-gray-800">Mandaue Branch</p>
                   <p class="text-sm text-gray-600 mb-3 flex-grow">Apt. D, Comfoods Bldg., M.C. Briones Street, Maguikay, Mandaue City, Cebu 6014</p>
-                  <a href="https://maps.google.com/?q=10.337475916406728,123.94312397301461" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto">
+                  <a href="https://maps.google.com/?q=10.337475916406728,123.94312397301461" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto" data-pixel-event="FindLocation" data-pixel-audience="b2c" data-pixel-content-name="retailer_cmap_mandaue" data-pixel-content-category="retail_locator">
                     <i class="fas fa-map-marked-alt mr-1"></i> View on Map
                   </a>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col">
                   <p class="text-sm font-semibold text-gray-800">Basak, San Nicolas Branch</p>
                   <p class="text-sm text-gray-600 mb-3 flex-grow">Cebu South Road Corner Eucalyptus Street, Basak, San Nicholas, Cebu City, Cebu 6000</p>
-                  <a href="https://maps.google.com/?q=10.289948459913697,123.87116804002402" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto">
+                  <a href="https://maps.google.com/?q=10.289948459913697,123.87116804002402" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto" data-pixel-event="FindLocation" data-pixel-audience="b2c" data-pixel-content-name="retailer_cmap_basak_san_nicolas" data-pixel-content-category="retail_locator">
                     <i class="fas fa-map-marked-alt mr-1"></i> View on Map
                   </a>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col">
                   <p class="text-sm font-semibold text-gray-800">Bulacao, Talisay Branch</p>
                   <p class="text-sm text-gray-600 mb-3 flex-grow">Quintin Dy Bldg., Cebu South Road, Bulacao, Talisay City, Cebu 6045</p>
-                  <a href="https://maps.google.com/?q=10.266989634131091,123.84282297178031" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto">
+                  <a href="https://maps.google.com/?q=10.266989634131091,123.84282297178031" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto" data-pixel-event="FindLocation" data-pixel-audience="b2c" data-pixel-content-name="retailer_cmap_bulacao_talisay" data-pixel-content-category="retail_locator">
                     <i class="fas fa-map-marked-alt mr-1"></i> View on Map
                   </a>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col">
                   <p class="text-sm font-semibold text-gray-800">Tabunok, Talisay Branch</p>
                   <p class="text-sm text-gray-600 mb-3 flex-grow">Suarez Bldg., Cebu South Road, Tabunok, Talisay City, Cebu 6045</p>
-                  <a href="https://maps.google.com/?q=10.262052776403443,123.83754466649651" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto">
+                  <a href="https://maps.google.com/?q=10.262052776403443,123.83754466649651" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto" data-pixel-event="FindLocation" data-pixel-audience="b2c" data-pixel-content-name="retailer_cmap_tabunok_talisay" data-pixel-content-category="retail_locator">
                     <i class="fas fa-map-marked-alt mr-1"></i> View on Map
                   </a>
                 </div>
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col">
                   <p class="text-sm font-semibold text-gray-800">Awayan, Carcar Branch</p>
                   <p class="text-sm text-gray-600 mb-3 flex-grow">Natalio B. Bacalso Cebu South Road, Awayan, Carcar City, Cebu 6019</p>
-                  <a href="https://maps.google.com/?q=10.10912775986944,123.64832329919201" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto">
+                  <a href="https://maps.google.com/?q=10.10912775986944,123.64832329919201" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto" data-pixel-event="FindLocation" data-pixel-audience="b2c" data-pixel-content-name="retailer_cmap_awayan_carcar" data-pixel-content-category="retail_locator">
                     <i class="fas fa-map-marked-alt mr-1"></i> View on Map
                   </a>
                 </div>
@@ -193,6 +190,14 @@ if (import.meta.client) {
       <a href="mailto:sea-sales@navitag.com" class="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-navitag-blue text-white font-semibold hover:bg-opacity-90 transition shadow-lg shadow-navitag-blue/20" data-pixel-event="Contact" data-pixel-audience="b2b" data-pixel-content-name="distribution_ph_bulk_sales" data-pixel-content-category="b2b_intent" data-pixel-lead-type="reseller_inquiry">
         Contact Fleet Sales <i class="fas fa-envelope ml-2"></i>
       </a>
+
+      <div class="mt-16 pt-12 border-t border-gray-100">
+        <h2 class="text-2xl font-extrabold tracking-tight text-gray-950 mb-4">Interested in Reselling Navitag?</h2>
+        <p class="text-gray-600 mb-8">Join our growing network of authorized resellers across the Philippines and Southeast Asia. Get partner pricing, marketing support, and dedicated account management.</p>
+        <NuxtLink to="/ph/contact" class="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-navitag-orange text-white font-semibold hover:bg-opacity-90 transition shadow-lg shadow-navitag-orange/20" data-pixel-event="Contact" data-pixel-audience="b2b" data-pixel-content-name="distribution_ph_reseller" data-pixel-content-category="b2b_intent" data-pixel-lead-type="reseller_inquiry">
+          Become a Reseller <i class="fas fa-handshake ml-2"></i>
+        </NuxtLink>
+      </div>
     </div>
   </section>
 </template>

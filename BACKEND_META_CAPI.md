@@ -57,6 +57,14 @@ beyond what's needed for backend integration are deliberately excluded.
 | `AddPaymentInfo` | PayPal Card Fields rendered on either checkout |
 | `Purchase` | Order completed (browser AND Medusa server-side, same `event_id`) |
 | `CompleteRegistration` | Signup success (email/Google/Apple) |
+| `SubmitApplication` | Tracker share-claim success on `/invite/view/[token]` (lead-shaped — emits parallel `LeadB2C`/`LeadB2B` browser-side) |
+
+Custom events that also flow through `/v1/meta/capi` (browser-only `LeadB2C` / `LeadB2B` parallels excluded, per the rule above):
+
+| Event | Fires when |
+|---|---|
+| `Login` | Successful sign-in via `/login` page or `LoginOverlay` (params: `method`, `audience`, `content_name`) |
+| `HeroCTAClick`, `HomeSectionCTA`, `NavClick`, `FooterCTA`, `RegionSwitch`, `FindLocation` | Declarative `data-pixel-*` CTAs across the site (params vary; always include `audience`) |
 
 ### Declarative CTA tracking (`data-pixel-*`)
 
@@ -636,6 +644,6 @@ warning, page is unaffected).
 
 ---
 
-_Last updated: 2026-04-29. Source-of-truth for the contract — when you
+_Last updated: 2026-04-29 (added `SubmitApplication` + `Login` custom + footer/region-switch CTA events to the wired list; request shape unchanged). Source-of-truth for the contract — when you
 change the request shape on either side, update this document in the
 same PR._

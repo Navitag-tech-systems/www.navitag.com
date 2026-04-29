@@ -8,12 +8,24 @@ useSeoMeta({
 
 const { auth } = useFirebase()
 const basic = useBasicStore()
+const { $fbq } = useNuxtApp()
 
 const ready = ref(false)
 const email = ref('')
 const loading = ref(false)
 const error = ref('')
 const sent = ref(false)
+
+if (import.meta.client) {
+  onMounted(() => {
+    // Audience left to plugin route-inference; both B2C and B2B accounts
+    // hit this page.
+    $fbq('ViewContent', {
+      content_name: 'forgot_password',
+      content_category: 'auth',
+    })
+  })
+}
 
 onMounted(async () => {
   await basic.ensureAuthResolved()

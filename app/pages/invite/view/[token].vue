@@ -35,6 +35,7 @@ const token = computed(() => String(route.params.token || ''))
 
 const { auth } = useFirebase()
 const basic = useBasicStore()
+const { $fbq } = useNuxtApp()
 
 const invite = ref<InviteMeta | null>(null)
 const metaLoading = ref(true)
@@ -94,6 +95,17 @@ async function loadMeta() {
     invite.value = await $fetch<InviteMeta>(
       `${SHARE_BASE}/v1/share/invite/${encodeURIComponent(token.value)}`,
     )
+    if (import.meta.client && invite.value) {
+      $fbq('ViewContent', {
+        content_name: 'invite_view',
+        content_category: 'invite',
+        content_type: 'tracker_share',
+        content_ids: [token.value],
+        // Audience left to plugin route-inference; share invites can be
+        // either a consumer family-share or a fleet manager onboarding a
+        // colleague.
+      })
+    }
   } catch (e: any) {
     const status = e?.response?.status ?? e?.statusCode
     if (status === 404) {
@@ -118,6 +130,19 @@ async function claim() {
       headers: { Authorization: `Bearer ${idToken}` },
       body: { token: token.value },
     })
+    // Successful claim — viral acquisition signal. SubmitApplication is the
+    // closest standard event (shape: a user accepting a tracker hand-off).
+    // Plugin auto-emits a parallel LeadB2C/LeadB2B for audience builders.
+    if (claimResult.value?.granted_devices?.length) {
+      $fbq('SubmitApplication', {
+        content_name: 'invite_claim',
+        content_category: 'invite',
+        content_type: 'tracker_share',
+        content_ids: [token.value],
+        num_items: claimResult.value.granted_devices.length,
+        lead_type: 'invite_claim',
+      })
+    }
   } catch (e: any) {
     const status = e?.response?.status ?? e?.statusCode
     const body = e?.data ?? e?.response?._data
