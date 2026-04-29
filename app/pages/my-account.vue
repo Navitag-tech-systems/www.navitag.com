@@ -1,53 +1,17 @@
 <script setup lang="ts">
-import { onAuthStateChanged, signOut } from 'firebase/auth'
-import { MEDUSA_BACKEND_URL } from '~/variables'
-
 useHead({
-  title: 'Navitag - Account',
+  title: 'Navitag - My Account',
   meta: [
     { name: 'robots', content: 'noindex, nofollow' },
   ],
 })
 
-const { auth } = useFirebase()
-
-const user = ref<any>(null)
-const authChecked = ref(false)
-const medusaToken = ref<string | null>(null)
-const medusaTokenLoading = ref(false)
-const medusaTokenError = ref('')
-
-onMounted(() => {
-  onAuthStateChanged(auth, async (firebaseUser) => {
-    user.value = firebaseUser
-    authChecked.value = true
-    if (firebaseUser) {
-      await fetchMedusaToken(firebaseUser)
-    }
-  })
-})
-
-async function fetchMedusaToken(firebaseUser: any) {
-  medusaTokenLoading.value = true
-  medusaTokenError.value = ''
-  try {
-    const idToken = await firebaseUser.getIdToken()
-    const res = await $fetch<{ token: string }>(`${MEDUSA_BACKEND_URL}/auth/customer/firebase`, {
-      method: 'POST',
-      body: { id_token: idToken },
-    })
-    medusaToken.value = res.token
-  } catch (e: any) {
-    medusaTokenError.value = e?.data?.message || e?.message || 'Failed to get Medusa token'
-  } finally {
-    medusaTokenLoading.value = false
-  }
-}
+const basic = useBasicStore()
+const user = computed(() => basic.user)
+const authChecked = computed(() => basic.authResolved)
 
 async function logout() {
-  await signOut(auth)
-  localStorage.removeItem('medusa_jwt')
-  user.value = null
+  await basic.logout()
 }
 </script>
 
@@ -119,24 +83,6 @@ async function logout() {
               <span class="text-xs uppercase font-medium text-gray-400">Last Sign In</span>
               <span class="text-sm text-gray-900">{{ user.metadata?.lastSignInTime || '—' }}</span>
             </div>
-          </div>
-        </div>
-
-        <!-- Medusa Token -->
-        <div class="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div class="px-6 py-4">
-            <span class="text-xs uppercase font-medium text-gray-400">Medusa Token</span>
-            <div v-if="medusaTokenLoading" class="mt-2">
-              <i class="fas fa-spinner fa-spin text-navitag-blue text-sm"></i>
-              <span class="text-sm text-gray-500 ml-2">Fetching token...</span>
-            </div>
-            <div v-else-if="medusaTokenError" class="mt-2 text-sm text-red-500">
-              <i class="fas fa-times-circle mr-1"></i>{{ medusaTokenError }}
-            </div>
-            <div v-else-if="medusaToken" class="mt-2">
-              <p class="text-xs font-mono text-gray-700 break-all bg-gray-50 rounded-lg p-3 select-all">{{ medusaToken }}</p>
-            </div>
-            <div v-else class="mt-2 text-sm text-gray-400">—</div>
           </div>
         </div>
 

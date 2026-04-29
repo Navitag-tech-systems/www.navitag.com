@@ -9,6 +9,10 @@ const message = computed(() => {
   return 'Something went wrong.'
 })
 
+useSeoMeta({
+  robots: 'noindex, nofollow',
+})
+
 const handleError = () => clearError({ redirect: '/' })
 </script>
 

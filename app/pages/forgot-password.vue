@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { sendPasswordResetEmail, signOut } from 'firebase/auth'
+import { sendPasswordResetEmail } from 'firebase/auth'
 
 useSeoMeta({
   title: 'Navitag - Reset Password',
@@ -7,6 +7,7 @@ useSeoMeta({
 })
 
 const { auth } = useFirebase()
+const basic = useBasicStore()
 
 const ready = ref(false)
 const email = ref('')
@@ -15,9 +16,8 @@ const error = ref('')
 const sent = ref(false)
 
 onMounted(async () => {
-  if (auth.currentUser) {
-    await signOut(auth)
-  }
+  await basic.ensureAuthResolved()
+  if (basic.user) await basic.logout()
   ready.value = true
 })
 
@@ -48,7 +48,7 @@ async function handleReset() {
       <div class="text-center mb-8">
         <NuxtLink to="/" class="inline-flex items-center gap-3">
           <img src="/logo-sm.png" alt="Navitag" class="h-12 w-auto">
-          <span class="text-3xl font-extrabold text-gray-950">Navitag</span>
+          <span class="text-3xl font-extrabold text-gray-950">NAVITAG</span>
         </NuxtLink>
       </div>
 

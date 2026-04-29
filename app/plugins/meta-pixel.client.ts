@@ -1,6 +1,77 @@
-const PIXEL_ID = '1478826687226054'
+// Meta Pixel boot + typed $fbq helper.
+//
+// Every track call attaches an `eventID` (UUID) so the server-side CAPI
+// mirror dedupes against the browser pixel. Helpers return the id for that
+// purpose; existing call sites are free to ignore the return.
+//
+// Audience tagging (b2c vs b2b):
+//   • Every event auto-attaches `audience` inferred from the active route
+//     unless the caller passes an explicit value in params.
+//   • For lead-shaped standard events (Lead, Contact, CompleteRegistration,
+//     SubmitApplication, Schedule), a parallel custom event named
+//     `LeadB2B` or `LeadB2C` is fired so Ads Manager can build clean
+//     audiences without param filters.
+//
+// CAPI mirror:
+//   • Every track / trackCustom call POSTs to the unified backend's
+//     /v1/meta/capi endpoint with the same event_id, hashed user_data
+//     (incl. _fbp / _fbc cookies), event_source_url, and custom_data.
+//   • Backend forwards to Meta with the access token + the request IP
+//     (which the browser cannot reliably know).
+//   • Fire-and-forget: failures never block UI.
+//
+// Advanced Matching:
+//   • On boot we init the pixel with no user data so anonymous traffic
+//     works. When useBasicStore() resolves an authed user, we re-init
+//     with hashed em / external_id / country so subsequent events carry
+//     identity (for both browser pixel and CAPI mirror).
+import { inferAudience, type Audience } from '~/composables/useAudience'
+import {
+  buildCapiUserData,
+  hashIdentity,
+  type CapiUserData,
+  type HashedUserData,
+} from '~/utils/metaUserData'
+
+export interface FbqHelper {
+  /** Fire a Meta standard event (Purchase, Lead, AddToCart, …). Returns event_id. */
+  (event: string, params?: Record<string, any>): string
+  /** Fire a custom event via fbq('trackCustom', ...). Returns event_id. */
+  custom: (event: string, params?: Record<string, any>) => string
+  /**
+   * Mirror a pre-minted event_id to CAPI without firing the browser pixel.
+   * Used by checkout flows where the same event_id is also stuffed into
+   * Medusa cart metadata so the backend can fire server-side Purchase
+   * with matching dedup.
+   */
+  mirror: (event: string, params: Record<string, any>, eventId: string) => Promise<void>
+}
+
+function newEventId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback for environments without crypto.randomUUID (older Safari).
+  return 'evt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)
+}
+
+// Standard events that represent a "lead" of some kind. These get the
+// parallel LeadB2B / LeadB2C custom emission for audience builds.
+const LEAD_SHAPED = new Set([
+  'Lead',
+  'Contact',
+  'CompleteRegistration',
+  'SubmitApplication',
+  'Schedule',
+])
 
 export default defineNuxtPlugin((nuxtApp) => {
+  const config = useRuntimeConfig().public
+  const PIXEL_ID = config.metaPixelId as string
+  const CAPI_ENDPOINT = (config.metaCapiEndpoint as string) || ''
+  const TEST_EVENT_CODE = (config.metaTestEventCode as string) || ''
+  if (!PIXEL_ID) return
+
   ;(function (f: any, b, e, v, n?: any, t?: any, s?: any) {
     if (f.fbq) return
     n = f.fbq = function () {
@@ -20,14 +91,192 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   const fbq = (window as any).fbq
   fbq('init', PIXEL_ID)
-  fbq('track', 'PageView')
+  fbq('track', 'PageView', {}, { eventID: newEventId() })
 
   const router = useRouter()
   router.afterEach(() => {
-    ;(window as any).fbq?.('track', 'PageView')
+    const eid = newEventId()
+    ;(window as any).fbq?.('track', 'PageView', {}, { eventID: eid })
+    // Mirror PageView too — gives the server a canonical session timeline.
+    void mirrorToCapi('PageView', {}, eid)
   })
 
-  // Global click listener for CMS data-pixel-* tracked CTAs
+  // ─── Advanced Matching: re-init when auth resolves ───────────────────
+  // Cached AM payload so subsequent events from the browser pixel carry
+  // identity. Also reused as the hashed user_data baseline when mirroring
+  // events to CAPI (each event's mirror call merges in fresh _fbp/_fbc/UA).
+  let cachedAdvancedMatching: HashedUserData = {}
+
+  async function pushAdvancedMatching() {
+    try {
+      const basic = useBasicStore()
+      const user = basic.user
+      const country = basic.country || null
+
+      if (!user) {
+        // Logged out — clear AM by re-init with no params.
+        cachedAdvancedMatching = {}
+        ;(window as any).fbq?.('init', PIXEL_ID)
+        return
+      }
+
+      const hashed = await hashIdentity({
+        email: user.email,
+        externalId: user.uid,
+        countryCode: country,
+        // Phone / first / last names are not collected at signup today.
+        // Plumb them here when the backend starts surfacing them.
+      })
+      cachedAdvancedMatching = hashed
+      ;(window as any).fbq?.('init', PIXEL_ID, hashed)
+    }
+    catch (e) {
+      // AM is best-effort — never break the pixel if hashing fails.
+      console.warn('[meta-pixel] pushAdvancedMatching failed', e)
+    }
+  }
+
+  // Watch the auth store. We delay the first push until after the plugin
+  // returns so useBasicStore() is available — Pinia is set up by then.
+  nuxtApp.hook('app:mounted', () => {
+    const basic = useBasicStore()
+    // Initial push if already resolved by mount time.
+    if (basic.authResolved) void pushAdvancedMatching()
+    // Re-push on any change in auth state or country (changes the AM payload).
+    basic.$subscribe(() => {
+      if (basic.authResolved) void pushAdvancedMatching()
+    })
+  })
+
+  // ─── CAPI mirror dispatch ────────────────────────────────────────────
+  async function mirrorToCapi(
+    eventName: string,
+    customData: Record<string, any>,
+    eventId: string,
+  ): Promise<void> {
+    if (!CAPI_ENDPOINT) return
+    try {
+      const userData: CapiUserData = await buildCapiUserData({
+        // Re-fetch live identity at fire time so the hashed payload is
+        // current even if the user just logged in seconds ago.
+        ...(() => {
+          try {
+            const basic = useBasicStore()
+            return {
+              email: basic.user?.email,
+              externalId: basic.user?.uid,
+              countryCode: basic.country,
+            }
+          }
+          catch {
+            return {}
+          }
+        })(),
+      })
+
+      const payload = {
+        event_id: eventId,
+        event_name: eventName,
+        event_time: Math.floor(Date.now() / 1000),
+        action_source: 'website',
+        event_source_url: typeof window !== 'undefined' ? window.location.href : undefined,
+        ...(TEST_EVENT_CODE ? { test_event_code: TEST_EVENT_CODE } : {}),
+        user_data: userData,
+        custom_data: customData,
+      }
+
+      // keepalive lets the request survive page navigation / unload —
+      // important for Purchase, where the user is about to be redirected.
+      await fetch(CAPI_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true,
+        // Mirror is anonymous-tolerant on the backend — no auth header.
+        // Backend rate-limits per-IP; do not retry from the browser.
+        credentials: 'omit',
+      })
+    }
+    catch (e) {
+      // Best-effort: never let CAPI mirror failures break the page.
+      console.warn(`[meta-pixel] CAPI mirror failed for ${eventName}`, e)
+    }
+  }
+
+  /**
+   * Decorate a params object with the inferred `audience` (b2c | b2b) unless
+   * the caller already set one. Reads from `window.location.pathname` since
+   * this runs after navigation has settled.
+   */
+  function decorate(params: Record<string, any> | undefined): Record<string, any> {
+    const next: Record<string, any> = { ...(params || {}) }
+    if (!next.audience) next.audience = inferAudience()
+    return next
+  }
+
+  function track(event: string, params?: Record<string, any>): string {
+    const eventId = newEventId()
+    const decorated = decorate(params)
+    ;(window as any).fbq?.('track', event, decorated, { eventID: eventId })
+
+    // Parallel custom for lead-shaped events so audiences in Ads Manager
+    // don't require a custom-param filter.
+    if (LEAD_SHAPED.has(event)) {
+      const audience: Audience = decorated.audience
+      const parallelName = audience === 'b2b' ? 'LeadB2B' : 'LeadB2C'
+      ;(window as any).fbq?.(
+        'trackCustom',
+        parallelName,
+        {
+          source_event: event,
+          content_name: decorated.content_name,
+          content_category: decorated.content_category,
+          lead_type: decorated.lead_type,
+          value: decorated.value,
+          currency: decorated.currency,
+        },
+        { eventID: newEventId() },
+      )
+    }
+
+    // Fire-and-forget CAPI mirror.
+    void mirrorToCapi(event, decorated, eventId)
+
+    return eventId
+  }
+
+  function trackCustom(event: string, params?: Record<string, any>): string {
+    const eventId = newEventId()
+    const decorated = decorate(params)
+    ;(window as any).fbq?.('trackCustom', event, decorated, { eventID: eventId })
+    void mirrorToCapi(event, decorated, eventId)
+    return eventId
+  }
+
+  /**
+   * Mirror a pre-minted event_id to CAPI without firing the browser pixel.
+   * Use when the same event_id is going to be sent server-side from another
+   * system (e.g. Medusa order-placed subscriber for Purchase) and you want
+   * the browser-side mirror to dedup against it.
+   */
+  async function mirror(
+    event: string,
+    params: Record<string, any>,
+    eventId: string,
+  ): Promise<void> {
+    return mirrorToCapi(event, decorate(params), eventId)
+  }
+
+  // Global click listener for CMS / template data-pixel-* tracked CTAs.
+  // Recognized attributes:
+  //   data-pixel-event        — standard event name (or "Custom")
+  //   data-pixel-custom-name  — used when data-pixel-event="Custom"
+  //   data-pixel-content-name — content_name param
+  //   data-pixel-content-category — content_category param
+  //   data-pixel-value        — numeric, paired with data-pixel-currency
+  //   data-pixel-currency     — ISO code, defaults to USD when value is set
+  //   data-pixel-audience     — 'b2b' | 'b2c' override (else route-inferred)
+  //   data-pixel-lead-type    — free-form lead categorization
   const RESERVED_EVENTS = new Set(['PageView', 'ViewContent', 'Purchase'])
 
   document.addEventListener('click', (e) => {
@@ -42,9 +291,18 @@ export default defineNuxtPlugin((nuxtApp) => {
     if (target.dataset.pixelContentName) {
       params.content_name = target.dataset.pixelContentName
     }
+    if (target.dataset.pixelContentCategory) {
+      params.content_category = target.dataset.pixelContentCategory
+    }
+    if (target.dataset.pixelLeadType) {
+      params.lead_type = target.dataset.pixelLeadType
+    }
+    if (target.dataset.pixelAudience === 'b2b' || target.dataset.pixelAudience === 'b2c') {
+      params.audience = target.dataset.pixelAudience
+    }
 
     if (event === 'Custom' && target.dataset.pixelCustomName) {
-      ;(window as any).fbq?.('trackCustom', target.dataset.pixelCustomName, params)
+      trackCustom(target.dataset.pixelCustomName, params)
       return
     }
 
@@ -56,14 +314,27 @@ export default defineNuxtPlugin((nuxtApp) => {
       }
     }
 
-    ;(window as any).fbq?.('track', event, params)
+    track(event, params)
   })
+
+  const helper = track as FbqHelper
+  helper.custom = trackCustom
+  helper.mirror = mirror
 
   return {
     provide: {
-      fbq: (event: string, params?: Record<string, any>) => {
-        ;(window as any).fbq?.('track', event, params)
-      },
+      fbq: helper,
     },
   }
 })
+
+declare module '#app' {
+  interface NuxtApp {
+    $fbq: FbqHelper
+  }
+}
+declare module 'vue' {
+  interface ComponentCustomProperties {
+    $fbq: FbqHelper
+  }
+}

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 useSeoMeta({
   title: 'Navitag - Privacy Policy',
-  robots: 'noindex, nofollow',
+  robots: 'index, follow',
 })
 </script>
 

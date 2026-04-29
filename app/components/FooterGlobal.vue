@@ -3,25 +3,51 @@ const year = new Date().getFullYear()
 </script>
 
 <template>
-  <footer class="bg-gray-950 text-gray-300 py-16 mt-16 border-t border-gray-800">
-    <div class="container mx-auto px-6 grid md:grid-cols-4 gap-12">
-      <div class="md:col-span-1 space-y-4">
-        <NuxtLink to="/" class="flex items-center gap-3">
-          <img src="/logo-sm.png" alt="Navitag Logo" class="h-10 w-auto">
-          <span class="text-2xl font-bold text-white">Navitag</span>
+  <footer class="bg-navitag-bg border-t border-gray-200/70">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 pt-16 pb-10">
+      <!-- Brand block -->
+      <div class="flex flex-col items-center text-center">
+        <NuxtLink to="/" class="flex items-center gap-2.5">
+          <img src="/logo-sm.png" alt="Navitag" class="h-8 w-auto" loading="lazy">
+          <span class="text-xl font-semibold tracking-tight text-gray-950">NAVITAG</span>
         </NuxtLink>
-        <p class="text-sm">Global Brand. Local Presence</p>
+        <p class="mt-4 text-[15px] text-gray-600 tracking-tight">
+          Never Lose What Matters.
+        </p>
       </div>
 
-      <div class="md:col-span-1 space-y-4 text-sm">
-        <h4 class="font-semibold text-white mb-5">Navitag Global</h4>
-        <a href="#global" class="block hover:text-navitag-orange">Our Footprint</a>
-        <NuxtLink to="/ph" class="block hover:text-navitag-orange">Southeast Asia Portal</NuxtLink>
-        <a href="#contact" class="block hover:text-navitag-orange">Contact Us</a>
+      <!-- Links -->
+      <div class="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[13.5px] font-medium text-gray-600">
+        <NuxtLink to="/privacy-policy" class="hover:text-navitag-blue transition-colors">
+          Privacy Policy
+        </NuxtLink>
+        <span class="hidden sm:inline-block w-px h-3 bg-gray-300"></span>
+        <NuxtLink
+          to="/contact"
+          class="hover:text-navitag-blue transition-colors"
+        >
+          Contact us
+        </NuxtLink>
       </div>
-    </div>
-    <div class="container mx-auto px-6 mt-16 text-center text-xs text-gray-600 border-t border-gray-800 pt-8">
-      &copy; {{ year }} Navitag Digital Innovations LLC. All rights reserved. Registered US LLC.
+
+      <!-- Payment strip -->
+      <div class="mt-10 flex flex-col items-center gap-3">
+        <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+          Secure Payments
+        </span>
+        <div class="flex items-center gap-3 text-gray-400">
+          <i class="fab fa-cc-visa text-3xl" aria-label="Visa"></i>
+          <i class="fab fa-cc-mastercard text-3xl" aria-label="Mastercard"></i>
+          <i class="fab fa-cc-amex text-3xl" aria-label="American Express"></i>
+          <i class="fab fa-cc-discover text-3xl" aria-label="Discover"></i>
+          <i class="fab fa-cc-paypal text-3xl" aria-label="PayPal"></i>
+        </div>
+      </div>
+
+      <!-- Copyright -->
+      <div class="mt-12 pt-6 border-t border-gray-200/70 text-center text-[12px] text-gray-500 leading-relaxed">
+        &copy; {{ year }} Navitag Digital Innovations LLC. All rights reserved.
+      </div>
     </div>
   </footer>
 </template>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { countries } from '~/utils/countryList'
+
+const basic = useBasicStore()
+const countries = basic.countryList
 
 definePageMeta({
   layout: false,
@@ -10,12 +12,13 @@ const PAYPAL_CLIENT_ID = useRuntimeConfig().public.paypalClientId as string
 const route = useRoute()
 const cartId = computed(() => route.params.cart_id as string)
 
-const { fetchCountryCode } = useBackendSync()
 const { medusaFetch } = useMedusa()
+const { $fbq } = useNuxtApp()
 
 useHead({
   title: 'Navitag - Plan Checkout',
 })
+useSeoMeta({ robots: 'noindex, nofollow' })
 
 function loadPayPalSDK(clientToken: string, currency: string): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -50,6 +53,25 @@ const paymentReady = ref(false)
 const paymentLoading = ref(false)
 const paymentError = ref('')
 const paying = ref(false)
+
+// Finalizing covers the window between 3DS close → onApprove fires →
+// Medusa /complete returns → navigation. Without this overlay the
+// customer briefly sees the checkout page after the 3DS modal closes,
+// which reads as "did my payment go through?".
+const finalizing = ref(false)
+
+// Hard-failure modal: shown when payment cannot recover with a simple
+// retry (post-capture complete() failure, unrecoverable PayPal error).
+// Submit-time validation / 3DS-cancel errors stay as inline messages.
+const paymentFailed = ref(false)
+const paymentFailureMsg = ref('')
+const paymentFailureMode = ref<'reinit' | 'retry-complete'>('reinit')
+
+// Cap retries at 1. After the first retry attempt the modal only offers
+// a back-out path so the customer doesn't burn time on a stuck cart.
+const RETRY_LIMIT = 1
+const retryCount = ref(0)
+const canRetry = computed(() => retryCount.value < RETRY_LIMIT)
 
 // Billing address state (PayPal advanced card fields shape + name for Medusa/PayPal cardholder)
 const billing = reactive({
@@ -87,9 +109,11 @@ onMounted(async () => {
     email.value = user.email
     emailPrefilled.value = true
   }
-  // Prefill country from IP detection (non-blocking)
-  fetchCountryCode().then((code) => {
-    if (code && !billing.countryCode) billing.countryCode = code.toUpperCase()
+  // Country is pinned to the customer's resolved region — locked once
+  // basicStore has it. Resolve in the background so the dropdown is
+  // already filled by the time billing is filled out.
+  basic.resolveCountry().then(() => {
+    if (basic.country) billing.countryCode = basic.country.toUpperCase()
   }).catch(() => {})
   await fetchCart()
 })
@@ -216,29 +240,39 @@ async function initPayment() {
       throw new Error('PayPal Card Fields not available')
     }
 
+    console.log('[plan-checkout] PayPal session init', {
+      cartId: cartId.value,
+      paymentCollectionId,
+      paypalOrderId,
+      currency,
+    })
+
     cardFields = paypal.CardFields({
-      createOrder: async () => paypalOrderId,
-      onApprove: async () => {
-        // PayPal approved — complete the cart
-        try {
-          paying.value = true
-          const result = await medusaFetch<{ type: string; order?: any; error?: any }>(`/store/carts/${cartId.value}/complete`, {
-            method: 'POST',
-          })
-          if (result.type === 'order') {
-            navigateTo(`/renew-complete/${result.order.id}`)
-          } else {
-            paymentError.value = result.error?.message || 'Order completion failed. Please try again.'
-          }
-        } catch (e: any) {
-          paymentError.value = e?.data?.message || e?.message || 'Failed to complete order.'
-        } finally {
-          paying.value = false
-        }
+      createOrder: async () => {
+        console.log('[plan-checkout] createOrder →', paypalOrderId)
+        return paypalOrderId
+      },
+      onApprove: async (data: any) => {
+        // PayPal has authorized (and 3DS, if invoked, has cleared). Money
+        // may already be captured-pending — from here on, any failure is
+        // post-capture and needs a retry-complete (NOT a re-init) to avoid
+        // double-charging the customer.
+        console.log('[plan-checkout] onApprove data →', JSON.parse(JSON.stringify(data || {})))
+        console.log('[plan-checkout] liabilityShift:', data?.liabilityShift, '| orderID:', data?.orderID)
+        finalizing.value = true
+        paying.value = true
+        await runComplete(data?.orderID)
       },
       onError: (err: any) => {
-        console.error('PayPal error:', err)
-        paymentError.value = 'Payment failed. Please check your card details and try again.'
+        // Pre-capture SDK error: card rejected, network blip, etc. The
+        // PayPal order isn't consumed, so a fresh init is the right retry.
+        console.error('[plan-checkout] onError →', err)
+        paying.value = false
+        finalizing.value = false
+        showHardFailure(
+          'reinit',
+          'Payment could not be processed. Please try again or use a different card.',
+        )
       },
       style: {
         input: {
@@ -260,6 +294,12 @@ async function initPayment() {
       await cardFields.ExpiryField({ inputEvents }).render('#card-expiry-field')
       await cardFields.CVVField({ inputEvents }).render('#card-cvv-field')
       paymentReady.value = true
+      $fbq('AddPaymentInfo', {
+        value: cart.value?.total ?? cart.value?.subtotal ?? 0,
+        currency: (cart.value?.currency_code || 'USD').toUpperCase(),
+        content_type: 'data_plan',
+        audience: 'b2c',
+      })
     } else {
       throw new Error('Card fields not eligible for this transaction')
     }
@@ -279,7 +319,8 @@ async function submitPayment() {
 
   paying.value = true
   paymentError.value = ''
-
+  console.log('[plan-checkout] submitPayment → cardFields.submit() begin')
+  const submitStart = Date.now()
   try {
     await cardFields.submit({
       cardholderName: `${billing.firstName.trim()} ${billing.lastName.trim()}`,
@@ -292,10 +333,165 @@ async function submitPayment() {
         countryCode: billing.countryCode,
       },
     })
+    console.log(`[plan-checkout] cardFields.submit() resolved in ${Date.now() - submitStart}ms | finalizing=${finalizing.value}`)
+    // submit() resolves into onApprove (handles success path).
+    // If it returned without onApprove firing, treat that as a soft
+    // failure so the user isn't left with a frozen Pay button.
+    if (!finalizing.value) {
+      console.warn('[plan-checkout] submit() resolved WITHOUT onApprove firing — possible silent failure')
+      paying.value = false
+    }
   } catch (e: any) {
-    paymentError.value = e?.message || 'Payment submission failed. Please try again.'
+    // Submit-time errors are pre-capture: customer cancelled 3DS popup,
+    // bad OTP, card rejected at confirm, network glitch. PayPal order
+    // isn't consumed, so they can retry with the same Card Fields —
+    // keep them on the page with an inline message.
+    console.error('[plan-checkout] cardFields.submit() threw →', e)
     paying.value = false
+    finalizing.value = false
+    paymentError.value = friendlySubmitError(e)
   }
+}
+
+async function runComplete(paypalOrderId?: string) {
+  paymentError.value = ''
+  console.log('[plan-checkout] runComplete → POST /store/carts/' + cartId.value + '/complete | paypalOrderId=' + paypalOrderId)
+
+  // Pre-mint Purchase event_id + stash dedup signals into cart metadata so
+  // Medusa's order-placed subscriber can fire a server-side Purchase to
+  // Meta CAPI with the same event_id. See shop/checkout for the full pattern.
+  const purchaseEventId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `evt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  try {
+    const { readFbCookies } = await import('~/utils/metaUserData')
+    const { fbp, fbc } = readFbCookies()
+    await medusaFetch(`/store/carts/${cartId.value}`, {
+      method: 'POST',
+      body: {
+        metadata: {
+          ...(cart.value?.metadata || {}),
+          meta_purchase_event_id: purchaseEventId,
+          meta_fbp: fbp || undefined,
+          meta_fbc: fbc || undefined,
+          meta_event_source_url: typeof window !== 'undefined' ? window.location.href : undefined,
+          meta_client_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        },
+      },
+    })
+  }
+  catch (e) {
+    console.warn('[plan-checkout] meta dedup metadata stash failed (non-fatal)', e)
+  }
+
+  const completeStart = Date.now()
+  try {
+    const result = await medusaFetch<{ type: string; order?: any; error?: any }>(
+      `/store/carts/${cartId.value}/complete`,
+      { method: 'POST' },
+    )
+    console.log(`[plan-checkout] /complete resolved in ${Date.now() - completeStart}ms →`, {
+      type: result?.type,
+      orderId: result?.order?.id,
+      error: result?.error,
+    })
+    if (result.type === 'order' && result.order?.id) {
+      const order = result.order
+      const variantIds = (order.items || []).map((it: any) => it.variant_id).filter(Boolean)
+      const numItems = (order.items || []).reduce((n: number, it: any) => n + (it.quantity || 0), 0)
+      const contents = (order.items || [])
+        .filter((it: any) => it.variant_id)
+        .map((it: any) => ({
+          id: it.variant_id,
+          quantity: it.quantity || 1,
+          item_price: typeof it.unit_price === 'number'
+            ? it.unit_price
+            : (typeof it.subtotal === 'number' && it.quantity ? it.subtotal / it.quantity : undefined),
+        }))
+      const purchaseParams = {
+        value: order.total ?? cart.value?.total ?? 0,
+        currency: (order.currency_code || cart.value?.currency_code || 'USD').toUpperCase(),
+        content_ids: variantIds,
+        content_type: 'data_plan',
+        contents,
+        num_items: numItems,
+        transaction_id: order.id,
+        audience: 'b2c' as const,
+      }
+      // Browser pixel + CAPI mirror share the pre-minted event_id so the
+      // parallel Medusa server-side fire (driven by cart.metadata) dedupes.
+      ;(window as any).fbq?.('track', 'Purchase', purchaseParams, { eventID: purchaseEventId })
+      void $fbq.mirror('Purchase', purchaseParams, purchaseEventId)
+      // Hand off to the renew-complete page; leave finalizing=true so
+      // the overlay covers the navigation transition.
+      console.log('[plan-checkout] navigating to /renew-complete/' + order.id)
+      await navigateTo(`/renew-complete/${order.id}`)
+      return
+    }
+    // Medusa came back without an order — capture happened upstream but
+    // order materialization failed. Offer retry of /complete only; do
+    // NOT re-init payment (that would double-charge).
+    console.warn('[plan-checkout] /complete returned non-order type — showing retry-complete modal')
+    showHardFailure(
+      'retry-complete',
+      result.error?.message
+        || 'Your payment was authorized but we could not finalize the order. Tap "Retry" to try again — your card will not be charged twice.',
+      paypalOrderId,
+    )
+  } catch (e: any) {
+    console.error('[plan-checkout] /complete threw →', e)
+    showHardFailure(
+      'retry-complete',
+      e?.data?.message
+        || e?.message
+        || 'Your payment was authorized but we could not finalize the order. Tap "Retry" to try again — your card will not be charged twice.',
+      paypalOrderId,
+    )
+  }
+}
+
+function friendlySubmitError(e: any): string {
+  const raw = (e?.message || '').toString()
+  // PayPal's "Window closed before response" fires when the 3DS challenge
+  // iframe is destroyed before the SDK reads the auth result — usually
+  // because the customer dismissed the popup, or a popup blocker / privacy
+  // extension nuked it. Translate to actionable copy.
+  if (/window closed before response/i.test(raw)) {
+    return 'The 3D Secure verification window was closed before authentication finished. Please tap Pay again and complete the bank verification step without closing the popup. If your browser blocked it, allow popups for paypal.com and try again.'
+  }
+  if (raw && raw.length < 200) return raw
+  return 'Payment could not be submitted. Please double-check your card details and try again.'
+}
+
+function showHardFailure(mode: 'reinit' | 'retry-complete', message: string, paypalOrderId?: string) {
+  paymentFailureMode.value = mode
+  paymentFailureMsg.value = paypalOrderId
+    ? `${message}\n\nPayPal reference: ${paypalOrderId}`
+    : message
+  paymentFailed.value = true
+  paying.value = false
+  finalizing.value = false
+}
+
+async function dismissFailure() {
+  if (!canRetry.value) return
+  const mode = paymentFailureMode.value
+  retryCount.value++
+  paymentFailed.value = false
+  paymentFailureMsg.value = ''
+
+  if (mode === 'retry-complete') {
+    // Same PayPal order, just re-attempt /complete. Re-show overlay
+    // so the customer doesn't see the checkout flash through.
+    finalizing.value = true
+    paying.value = true
+    await runComplete()
+    return
+  }
+  // Pre-capture failure → mint a fresh PayPal session and re-render fields.
+  paymentReady.value = false
+  cardFields = null
+  await initPayment()
 }
 </script>
 
@@ -478,13 +674,17 @@ async function submitPayment() {
                   id="country"
                   v-model="billing.countryCode"
                   autocomplete="country"
-                  :disabled="paymentReady || paymentLoading"
-                  class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500 bg-white"
+                  disabled
+                  aria-readonly="true"
+                  class="w-full px-4 py-3 rounded-xl border text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
                   :class="billingErrors.countryCode ? 'border-red-300' : 'border-gray-200'"
                 >
-                  <option value="" disabled>Select country</option>
+                  <option value="" disabled>Detecting...</option>
                   <option v-for="c in sortedCountries" :key="c.code" :value="c.code">{{ c.name }}</option>
                 </select>
+                <p class="mt-1 text-[11px] text-gray-400">
+                  <i class="fas fa-lock mr-1"></i>Set from your account region.
+                </p>
                 <p v-if="billingErrors.countryCode" class="text-xs text-red-600 mt-1">{{ billingErrors.countryCode }}</p>
               </div>
             </div>
@@ -563,6 +763,62 @@ async function submitPayment() {
     </div>
 
     <FooterMinimal />
+
+    <!-- Finalizing overlay: covers the gap between PayPal closing the
+         3DS modal and our /complete + navigation finishing. Sits below
+         PayPal's contingency overlay (z-50 < 99999) so it never hides
+         a still-open 3DS frame. -->
+    <div
+      v-if="finalizing"
+      class="fixed inset-0 z-50 bg-white/95 backdrop-blur-sm flex items-center justify-center px-6"
+    >
+      <div class="text-center max-w-sm">
+        <i class="fas fa-spinner fa-spin fa-2x text-navitag-blue mb-5"></i>
+        <h2 class="text-lg font-extrabold text-gray-950 mb-2">Finalizing your order…</h2>
+        <p class="text-sm text-gray-500">
+          Please don't close this window. We're confirming your payment and creating your order.
+        </p>
+      </div>
+    </div>
+
+    <!-- Hard-failure modal -->
+    <div
+      v-if="paymentFailed"
+      class="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-6"
+    >
+      <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+        <div class="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+          <i class="fas fa-times-circle text-red-500 fa-lg"></i>
+        </div>
+        <h3 class="text-center font-extrabold text-gray-950 text-lg mb-2">Payment failed</h3>
+        <p class="text-center text-sm text-gray-600 whitespace-pre-line mb-5">{{ paymentFailureMsg }}</p>
+        <p
+          v-if="!canRetry"
+          class="text-center text-[12.5px] text-gray-500 mb-5"
+        >
+          You've reached the retry limit for this checkout. Please go back or contact support if the issue persists.
+        </p>
+        <div class="flex gap-3">
+          <NuxtLink
+            :to="imei && imei !== '—' ? `/top-up/${imei}` : '/'"
+            class="flex-1 py-2.5 rounded-xl font-semibold text-sm transition text-center"
+            :class="canRetry
+              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              : 'bg-navitag-blue text-white hover:bg-opacity-90'"
+          >
+            Back
+          </NuxtLink>
+          <button
+            v-if="canRetry"
+            type="button"
+            class="flex-1 py-2.5 rounded-xl bg-navitag-blue text-white font-semibold text-sm hover:bg-opacity-90 transition"
+            @click="dismissFailure"
+          >
+            {{ paymentFailureMode === 'retry-complete' ? 'Retry' : 'Try Again' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -575,28 +831,30 @@ async function submitPayment() {
 .paypal-field-container :deep(iframe) {
   height: 44px !important;
 }
-
-/* Ensure PayPal 3DS/OTP modal overlay is always on top */
-:deep(div[id^="payments-sdk-contingency-handler"]),
-:deep(iframe[name*="__paypal"]),
-:deep(.paypal-overlay),
-:deep(.paypal-checkout-sandbox) {
-  z-index: 99999 !important;
-}
 </style>
 
 <style>
-/* Global: PayPal injects modals outside the component tree */
+/* Only the 3DS contingency popup needs to sit above our overlays.
+ * Scope is intentionally narrow: pin the contingency handler container
+ * AND every iframe nested inside it (the 3DS challenge iframe creates
+ * its own stacking context and won't inherit the parent's z-index).
+ * Inline Card Fields iframes live elsewhere in the DOM and stay at
+ * default stacking, so they don't bleed through our finalizing/failure
+ * overlays (which sit at z-50). */
 div[id^="payments-sdk-contingency-handler"] {
-  z-index: 99999 !important;
+  z-index: 2147483647 !important;
   position: fixed !important;
 }
 
+div[id^="payments-sdk-contingency-handler"] iframe,
+div[id^="payments-sdk-contingency-handler"] > * {
+  z-index: 2147483647 !important;
+}
+
+/* Belt-and-suspenders for the legacy popup-window flow PayPal still
+ * uses in some sandbox configurations. */
 iframe[name*="__paypal_checkout__"],
-iframe[name*="__paypal"],
-.paypal-overlay,
-.paypal-checkout-sandbox,
-div.zoid-outlet {
-  z-index: 99999 !important;
+.paypal-checkout-sandbox {
+  z-index: 2147483647 !important;
 }
 </style>

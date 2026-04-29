@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, OAuthProvider } from 'firebase/auth'
 import { MEDUSA_BACKEND_URL } from '~/variables'
-import { countries } from '~/utils/countryList'
+
+const basic = useBasicStore()
+const countries = basic.countryList
 
 useSeoMeta({
   title: 'Navitag - Sign Up',
@@ -10,6 +12,40 @@ useSeoMeta({
 
 const { auth } = useFirebase()
 const { backendSync, fetchCountryCode } = useBackendSync()
+const route = useRoute()
+const { $fbq } = useNuxtApp()
+
+const returnTo = computed(() => {
+  const raw = route.query.return
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (typeof value !== 'string') return '/'
+  // Only allow same-origin relative paths — reject protocol-relative, absolute URLs, and non-root paths.
+  if (!value.startsWith('/') || value.startsWith('//')) return '/'
+  return value
+})
+
+// Audience inferred from explicit `?intent=business` or the post-auth return URL
+// (e.g. `?return=/business`). Determines whether this signup feeds the
+// LeadB2B or LeadB2C audience pool.
+const intentParam = computed(() => {
+  const raw = route.query.intent
+  const value = Array.isArray(raw) ? raw[0] : raw
+  return typeof value === 'string' ? value : ''
+})
+const signupAudience = computed(() => inferAudience({
+  explicit: intentParam.value === 'business' ? 'b2b' : intentParam.value === 'consumer' ? 'b2c' : undefined,
+  returnTo: returnTo.value,
+}))
+
+if (import.meta.client) {
+  onMounted(() => {
+    $fbq('ViewContent', {
+      content_name: 'signup',
+      content_category: 'auth',
+      audience: signupAudience.value,
+    })
+  })
+}
 
 const fullName = ref('')
 const email = ref('')
@@ -71,7 +107,16 @@ async function signupWithEmail() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, fullName.value || null, selectedCountry.value),
     ])
-    navigateTo('/')
+    $fbq('CompleteRegistration', {
+      status: true,
+      content_name: 'email_signup',
+      method: 'email',
+      value: 0,
+      currency: 'USD',
+      audience: signupAudience.value,
+      lead_type: signupAudience.value === 'b2b' ? 'business_signup' : 'consumer_signup',
+    })
+    navigateTo(returnTo.value)
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Sign up failed'
   } finally {
@@ -88,7 +133,16 @@ async function signupWithGoogle() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, null, selectedCountry.value),
     ])
-    navigateTo('/')
+    $fbq('CompleteRegistration', {
+      status: true,
+      content_name: 'google_signup',
+      method: 'google',
+      value: 0,
+      currency: 'USD',
+      audience: signupAudience.value,
+      lead_type: signupAudience.value === 'b2b' ? 'business_signup' : 'consumer_signup',
+    })
+    navigateTo(returnTo.value)
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google sign up failed'
   } finally {
@@ -115,7 +169,16 @@ async function signupWithApple() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, null, selectedCountry.value),
     ])
-    navigateTo('/')
+    $fbq('CompleteRegistration', {
+      status: true,
+      content_name: 'apple_signup',
+      method: 'apple',
+      value: 0,
+      currency: 'USD',
+      audience: signupAudience.value,
+      lead_type: signupAudience.value === 'b2b' ? 'business_signup' : 'consumer_signup',
+    })
+    navigateTo(returnTo.value)
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Apple sign up failed'
   } finally {
@@ -131,7 +194,7 @@ async function signupWithApple() {
       <div class="text-center mb-8">
         <NuxtLink to="/" class="inline-flex items-center gap-3">
           <img src="/logo-sm.png" alt="Navitag" class="h-12 w-auto">
-          <span class="text-3xl font-extrabold text-gray-950">Navitag</span>
+          <span class="text-3xl font-extrabold text-gray-950">NAVITAG</span>
         </NuxtLink>
       </div>
 

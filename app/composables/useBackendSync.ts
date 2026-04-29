@@ -47,13 +47,16 @@ export function useBackendSync() {
       if (firebaseUser.email) data.email = firebaseUser.email
       if (firebaseUser.phoneNumber) data.phone = firebaseUser.phoneNumber
 
-      const res = await $fetch<{ status: string; server_url?: string; name?: string; phone?: string }>(`${UNIFIED_API_URL}/user/sync`, {
+      const res = await $fetch<{ status: string; server_url?: string; name?: string; phone?: string; country_code?: string | null }>(`${UNIFIED_API_URL}/user/sync`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${idToken}` },
         body: data,
       })
 
       localStorage.removeItem('apple_pending_name')
+      // Note: country code is intentionally NOT cached to localStorage —
+      // basicStore re-resolves country from this endpoint on every SPA boot
+      // so backend updates propagate immediately on the next page load.
       return res
     } catch (e) {
       console.error('[BackendSync] Sync failed:', e)

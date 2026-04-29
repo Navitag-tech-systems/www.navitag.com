@@ -7,6 +7,17 @@ useSeoMeta({
   robots: 'noindex, nofollow',
 })
 
+if (import.meta.client) {
+  const { $fbq: $fbqInit } = useNuxtApp()
+  onMounted(() => {
+    $fbqInit('ViewContent', {
+      content_name: 'login',
+      content_category: 'auth',
+      audience: 'b2c',
+    })
+  })
+}
+
 const { auth } = useFirebase()
 const { backendSync } = useBackendSync()
 
@@ -94,7 +105,7 @@ async function loginWithApple() {
       <div class="text-center mb-8">
         <NuxtLink to="/" class="inline-flex items-center gap-3">
           <img src="/logo-sm.png" alt="Navitag" class="h-12 w-auto">
-          <span class="text-3xl font-extrabold text-gray-950">Navitag</span>
+          <span class="text-3xl font-extrabold text-gray-950">NAVITAG</span>
         </NuxtLink>
       </div>
 

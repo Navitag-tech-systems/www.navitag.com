@@ -2,10 +2,13 @@
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, OAuthProvider } from 'firebase/auth'
 import { MEDUSA_BACKEND_URL } from '~/variables'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: boolean
   ipCountryCode?: string | null
-}>()
+  signupTo?: string
+}>(), {
+  signupTo: '/signup',
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
@@ -126,7 +129,7 @@ watch(() => props.modelValue, (val) => {
         <div class="text-center mb-6">
           <div class="inline-flex items-center gap-3">
             <img src="/logo-sm.png" alt="Navitag" class="h-10 w-auto">
-            <span class="text-2xl font-extrabold text-gray-950">Navitag</span>
+            <span class="text-2xl font-extrabold text-gray-950">NAVITAG</span>
           </div>
         </div>
 
@@ -201,7 +204,7 @@ watch(() => props.modelValue, (val) => {
         <!-- Signup link -->
         <p class="text-sm text-gray-500 text-center mt-5">
           Don't have an account?
-          <NuxtLink to="/signup" class="text-navitag-blue font-semibold hover:underline" @click="close">Sign Up</NuxtLink>
+          <NuxtLink :to="signupTo" class="text-navitag-blue font-semibold hover:underline" @click="close">Create Account with email</NuxtLink>
         </p>
       </div>
     </div>

@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { onAuthStateChanged } from 'firebase/auth'
 import { UNIFIED_API_URL, MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
-import { getRegionId } from '~/utils/countryList'
 
 definePageMeta({
   layout: false,
@@ -13,9 +11,11 @@ const imei = computed(() => route.params.imei as string)
 useHead({
   title: computed(() => `Navitag - Top-Up | ${imei.value}`),
 })
+useSeoMeta({ robots: 'noindex, nofollow' })
 
 const { auth } = useFirebase()
-const { fetchCountryCode } = useBackendSync()
+const basic = useBasicStore()
+const { $fbq } = useNuxtApp()
 
 const device = ref<any>(null)
 const products = ref<any[]>([])
@@ -23,40 +23,30 @@ const productsLoading = ref(false)
 const loading = ref(true)
 const error = ref('')
 const showLogin = ref(false)
-const isAuthenticated = ref(false)
-const authChecked = ref(false)
-const ipCountryCode = ref<string | null>(null)
+const isAuthenticated = computed(() => basic.isLoggedIn)
+const authChecked = computed(() => basic.authResolved)
+const ipCountryCode = computed(() => basic.country)
 const userCountryCode = ref<string | null>(null)
 const locationError = ref(false)
 
-// Region: MySQL user country > IP country > global default
-const countryCode = computed(() => userCountryCode.value || ipCountryCode.value)
-const regionId = computed(() => getRegionId(countryCode.value))
+// Region: MySQL user country (per-device) > store's resolved country > global default
+const countryCode = computed(() => userCountryCode.value || basic.country)
+const regionId = computed(() => basic.getRegionId(countryCode.value))
 
 onMounted(async () => {
-  const firstAuthState = new Promise<any>((resolve) => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      unsub()
-      resolve(user)
-    })
-  })
-
-  const [user, detectedCountry] = await Promise.all([
-    firstAuthState,
-    fetchCountryCode(),
+  // Both boot-time signals are now owned by basicStore — just await them.
+  await Promise.all([
+    basic.ensureAuthResolved(),
+    basic.resolveCountry(),
   ])
 
-  if (!detectedCountry) {
+  if (!basic.country) {
     loading.value = false
     locationError.value = true
     return
   }
 
-  ipCountryCode.value = detectedCountry
-  isAuthenticated.value = !!user
-  authChecked.value = true
-
-  if (user) {
+  if (basic.user) {
     checkDevice()
   } else {
     loading.value = false
@@ -91,6 +81,15 @@ async function checkDevice() {
     if (res.country) userCountryCode.value = res.country
     if (res.device?.model) {
       fetchProducts(res.device.model)
+    }
+    if (res.device) {
+      $fbq('ViewContent', {
+        content_name: 'top_up',
+        content_category: 'plan_renewal',
+        content_type: 'data_plan_list',
+        imei: imei.value,
+        audience: 'b2c',
+      })
     }
   } catch (e: any) {
     if (e?.response?.status === 401) {
@@ -276,7 +275,21 @@ async function buyPlan(productId: string) {
       body: { option_id: 'so_01KNNDCWCEWGBC8BA71HG92T10' },
     })
 
-    // 5. Navigate to checkout
+    // 5. Track AddToCart for the chosen plan variant
+    const product = products.value.find((p: any) => p.id === productId)
+    const variant = product?.variants?.find((v: any) => v.id === variantId)
+    const calc = variant?.calculated_price
+    $fbq('AddToCart', {
+      content_ids: [variantId],
+      content_type: 'data_plan',
+      content_name: product?.title || undefined,
+      value: calc?.calculated_amount ?? 0,
+      currency: (calc?.currency_code || 'USD').toUpperCase(),
+      num_items: 1,
+      audience: 'b2c',
+    })
+
+    // 6. Navigate to checkout
     navigateTo(`/plan-checkout/${cartId}`)
   } catch (e: any) {
     cartError.value = e?.data?.message || e?.message || 'Failed to create cart. Please try again.'

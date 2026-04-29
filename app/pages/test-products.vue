@@ -112,6 +112,7 @@ onMounted(() => fetchProducts())
               :src="product.thumbnail || product.images[0].url"
               :alt="product.title"
               class="w-full h-full object-cover"
+              loading="lazy"
             >
             <i v-else class="fas fa-image fa-3x text-gray-300"></i>
           </div>

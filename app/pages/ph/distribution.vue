@@ -3,11 +3,23 @@ definePageMeta({ layout: 'ph' })
 
 useSeoMeta({
   title: 'Navitag - Where to Buy | Southeast Asia',
-  description: 'Find official Navitag stores and authorized retailers in the Philippines and Southeast Asia. GPS trackers, dashcams, and wearables.',
+  description: 'Buy genuine Navitag GPS trackers in the Philippines and Southeast Asia — via Shopee, Lazada, our online store, or authorized installers in Metro Manila and Cebu.',
   ogTitle: 'Navitag - Where to Buy | Southeast Asia',
   ogDescription: 'Find official Navitag stores and authorized retailers in the Philippines and Southeast Asia.',
-  ogUrl: 'https://www.navitag.com/ph/distribution',
+  ogUrl: 'https://navitag.com/ph/distribution',
 })
+useHead({ link: [{ rel: 'canonical', href: 'https://navitag.com/ph/distribution' }] })
+
+if (import.meta.client) {
+  const { $fbq } = useNuxtApp()
+  onMounted(() => {
+    $fbq('ViewContent', {
+      content_name: 'distribution_ph',
+      content_category: 'distribution',
+      audience: 'b2c',
+    })
+  })
+}
 </script>
 
 <template>
@@ -33,7 +45,7 @@ useSeoMeta({
 
       <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
         <!-- Shopee -->
-        <a href="https://shopee.ph/ahw7ln8f3c" target="_blank" rel="noopener noreferrer" class="group block bg-white p-8 rounded-3xl border-2 border-transparent hover:border-[#EE4D2D] shadow-lg shadow-gray-200/50 hover:shadow-[#EE4D2D]/20 transition-all text-center flex flex-col h-full">
+        <a href="https://shopee.ph/ahw7ln8f3c" target="_blank" rel="noopener noreferrer" class="group block bg-white p-8 rounded-3xl border-2 border-transparent hover:border-[#EE4D2D] shadow-lg shadow-gray-200/50 hover:shadow-[#EE4D2D]/20 transition-all text-center flex flex-col h-full" data-pixel-event="Lead" data-pixel-audience="b2c" data-pixel-content-name="retailer_shopee_ph" data-pixel-content-category="retailer_outbound" data-pixel-lead-type="retailer_outbound">
           <div class="w-16 h-16 mx-auto rounded-full bg-orange-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
             <i class="fas fa-shopping-bag fa-2x text-[#EE4D2D]"></i>
           </div>
@@ -45,7 +57,7 @@ useSeoMeta({
         </a>
 
         <!-- Lazada -->
-        <a href="https://www.lazada.com.ph/shop/navitag-tech?path=index.htm&lang=en" target="_blank" rel="noopener noreferrer" class="group block bg-white p-8 rounded-3xl border-2 border-transparent hover:border-[#0F146D] shadow-lg shadow-gray-200/50 hover:shadow-[#0F146D]/20 transition-all text-center flex flex-col h-full">
+        <a href="https://www.lazada.com.ph/shop/navitag-tech?path=index.htm&lang=en" target="_blank" rel="noopener noreferrer" class="group block bg-white p-8 rounded-3xl border-2 border-transparent hover:border-[#0F146D] shadow-lg shadow-gray-200/50 hover:shadow-[#0F146D]/20 transition-all text-center flex flex-col h-full" data-pixel-event="Lead" data-pixel-audience="b2c" data-pixel-content-name="retailer_lazada_ph" data-pixel-content-category="retailer_outbound" data-pixel-lead-type="retailer_outbound">
           <div class="w-16 h-16 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
             <i class="fas fa-heart fa-2x text-[#0F146D]"></i>
           </div>
@@ -178,7 +190,7 @@ useSeoMeta({
     <div class="container mx-auto px-6 max-w-3xl text-center">
       <h2 class="text-2xl font-extrabold tracking-tight text-gray-950 mb-4">Need Bulk or Fleet Pricing?</h2>
       <p class="text-gray-600 mb-8">For orders of 10+ devices, commercial fleet deployments, or B2B inquiries, please bypass the retail stores and speak directly to our local enterprise team.</p>
-      <a href="mailto:sea-sales@navitag.com" class="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-navitag-blue text-white font-semibold hover:bg-opacity-90 transition shadow-lg shadow-navitag-blue/20">
+      <a href="mailto:sea-sales@navitag.com" class="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-navitag-blue text-white font-semibold hover:bg-opacity-90 transition shadow-lg shadow-navitag-blue/20" data-pixel-event="Contact" data-pixel-audience="b2b" data-pixel-content-name="distribution_ph_bulk_sales" data-pixel-content-category="b2b_intent" data-pixel-lead-type="reseller_inquiry">
         Contact Fleet Sales <i class="fas fa-envelope ml-2"></i>
       </a>
     </div>
