@@ -6,9 +6,113 @@ for CAPI dedup (event IDs, `_fbp` / `_fbc` capture, hashed user_data,
 mirror dispatch). The backends below need to implement what's specified
 here for end-to-end CAPI to work in production.
 
-> **Read alongside:** [`META_EVENTS.md`](./META_EVENTS.md) (full event
-> inventory) and [`README.md`](./README.md#meta-tracking--notes-for-future-changes)
-> (frontend conventions).
+> **Read alongside:** [`META_EVENTS.md`](./META_EVENTS.md) — full event
+> inventory: every event the frontend fires, with audience tags, params,
+> and source file:line references. Use it to know what payloads to
+> expect at `/v1/meta/capi`.
+
+---
+
+## Frontend context
+
+Background information about how the frontend fires events. This is the
+context backend devs need to understand the payloads they will receive
+and the behaviors they need to mirror server-side. Frontend conventions
+beyond what's needed for backend integration are deliberately excluded.
+
+### Pixel summary
+
+- **Pixel ID**: `1478826687226054` (configured via Nuxt
+  `runtimeConfig.public.metaPixelId`).
+- **Plugin-loaded**: fires `PageView` on initial load + every SPA route
+  change. Every event is sent with an `eventID` (UUID) that is also
+  forwarded to the CAPI mirror — this is the dedup key.
+- **`$fbq(event, params)`** is the typed helper exposed to all Vue
+  components. Returns the `event_id` for cases where the caller needs
+  to reuse it (currently only checkout flows for server-side dedup).
+- **`$fbq.custom(event, params)`** for custom events.
+- **`$fbq.mirror(event, params, eventId)`** mirrors a pre-minted event
+  id to CAPI without firing the browser pixel — used by checkout to
+  share the same id with Medusa's server-side fire.
+- **Audience auto-decoration**: every event auto-attaches
+  `audience: 'b2c' | 'b2b'` (route-inferred via
+  `app/composables/useAudience.ts`) unless the caller passed one
+  explicitly.
+- **Parallel custom events**: every lead-shaped standard event (`Lead`,
+  `Contact`, `CompleteRegistration`, `SubmitApplication`, `Schedule`)
+  also emits a parallel `LeadB2C` or `LeadB2B` browser-side custom
+  event. The CAPI mirror does NOT echo these parallels — they are
+  browser-only labels for Ads Manager audience builders.
+
+### Wired standard events
+
+| Event | Fires when |
+|---|---|
+| `PageView` | App boot + every router transition |
+| `ViewContent` | Every marketing surface, product page, top-up landing, auth pages, articles |
+| `Lead` | Contact form submit, plan tier intent CTAs, fleet quote CTAs, retail outbound clicks |
+| `Contact` | B2B inquiry CTAs (always `audience=b2b`) |
+| `AddToCart` | Buy Now on product page, plan tier pick on top-up |
+| `InitiateCheckout` | Submit shipping form on `/shop/shipping` |
+| `AddPaymentInfo` | PayPal Card Fields rendered on either checkout |
+| `Purchase` | Order completed (browser AND Medusa server-side, same `event_id`) |
+| `CompleteRegistration` | Signup success (email/Google/Apple) |
+
+### Declarative CTA tracking (`data-pixel-*`)
+
+CTAs across the site (hero carousel, header nav, plan tier CTAs, fleet
+CTAs, distribution outbounds, Strapi article CTAs) are tagged with
+HTML data attributes. A global `document` click listener picks them up
+and fires the matching event. Backend devs don't need to do anything
+special here — these flow through `/v1/meta/capi` like any other event.
+Recognized attributes (for context):
+
+```
+data-pixel-event           — standard event name (or "Custom")
+data-pixel-custom-name     — used when data-pixel-event="Custom"
+data-pixel-content-name    — content_name param
+data-pixel-content-category — content_category param
+data-pixel-value           — numeric, paired with data-pixel-currency
+data-pixel-currency        — ISO code (defaults to USD)
+data-pixel-audience        — 'b2b' | 'b2c' override
+data-pixel-lead-type       — free-form lead categorization
+```
+
+Reserved (won't fire from data attrs): `PageView`, `ViewContent`,
+`Purchase` — these are fired imperatively from script setup so timing
+and params are controlled.
+
+### Strapi article events (`/articles/[...slug]`)
+
+Article body is rendered via `v-html="article.bodyHtml"`. The plugin's
+delegated click listener picks up `data-pixel-*` attributes inside
+Strapi-managed HTML, so content authors can tag CTAs without code
+changes. Backend implication:
+
+- ✅ Events from inside article HTML look identical at the wire level
+  to events from the rest of the site. Same `/v1/meta/capi` flow.
+- ❌ Strapi authors **cannot** embed `<script>fbq(...)</script>` in
+  article body — HTML5 disallows execution of scripts inserted via
+  `innerHTML`. They must use `data-pixel-*` attributes.
+- The article-page `ViewContent` is fired imperatively from the page
+  component, not from Strapi.
+
+### Known operational nuances
+
+- **`AddPaymentInfo` fires on PayPal Card Fields render**, not on first
+  card-field input. If PayPal SDK is blocked (ad blocker, tracker
+  blocker), the event silently doesn't fire on the browser side. CAPI
+  mirror also doesn't fire in that case (no event was ever emitted).
+- **`audience` inference uses `window.location.pathname` at fire time**,
+  not the route the user came from. For events fired during/after
+  navigation transitions, the frontend passes `audience` explicitly.
+- **No consent gate, by explicit decision.** Meta Pixel + CAPI mirror
+  fire for every visitor in every jurisdiction. The product owner has
+  accepted the PH DPA / GDPR / CCPA exposure in exchange for 100%
+  event coverage. Backend should NOT filter incoming `/v1/meta/capi`
+  traffic by jurisdiction or any consent flag — frontend will not
+  send one. Re-confirm with the product owner before adding any
+  gating logic.
 
 ---
 
