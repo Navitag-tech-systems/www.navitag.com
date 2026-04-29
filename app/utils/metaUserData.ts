@@ -8,7 +8,7 @@
 // Hashing happens client-side because the same hashed values must be
 // available for both:
 //   1. fbq('init', PIXEL, { em, external_id, ... })   — browser AdvancedMatching
-//   2. POST /v1/meta/capi  user_data                   — server-side mirror
+//   2. POST capi.navitag.app  user_data                — server-side mirror
 // If we hashed only on the server, browser AM would have nothing to send and
 // dedup quality would drop.
 

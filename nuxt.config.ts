@@ -26,10 +26,10 @@ export default defineNuxtConfig({
     public: {
       paypalClientId: 'AUm1vZU6yaAmUOoxlQKA6NO00CHSqdYrRdOPBrvQEa4JkONw-uVAKv9yeifjUnRo-FtMQGiPddFvSQlA',
       metaPixelId: '1478826687226054',
-      // CAPI mirror endpoint on the unified backend. Browser-side events POST
+      // CAPI mirror endpoint (dedicated subdomain). Browser-side events POST
       // here so the server can forward to Meta with the access token + IP.
       // Override per env via NUXT_PUBLIC_META_CAPI_ENDPOINT.
-      metaCapiEndpoint: 'https://api.navitag.net/v1/meta/capi',
+      metaCapiEndpoint: 'https://capi.navitag.app/',
       // Set to a non-empty string (e.g. "TEST12345") in staging so events
       // land in Meta's Test Events tab rather than production. Empty in prod.
       metaTestEventCode: '',

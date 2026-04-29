@@ -9,7 +9,7 @@ here for end-to-end CAPI to work in production.
 > **Read alongside:** [`META_EVENTS.md`](./META_EVENTS.md) — full event
 > inventory: every event the frontend fires, with audience tags, params,
 > and source file:line references. Use it to know what payloads to
-> expect at `/v1/meta/capi`.
+> expect at `capi.navitag.app`.
 
 ---
 
@@ -59,7 +59,7 @@ beyond what's needed for backend integration are deliberately excluded.
 | `CompleteRegistration` | Signup success (email/Google/Apple) |
 | `SubmitApplication` | Tracker share-claim success on `/invite/view/[token]` (lead-shaped — emits parallel `LeadB2C`/`LeadB2B` browser-side) |
 
-Custom events that also flow through `/v1/meta/capi` (browser-only `LeadB2C` / `LeadB2B` parallels excluded, per the rule above):
+Custom events that also flow through `capi.navitag.app` (browser-only `LeadB2C` / `LeadB2B` parallels excluded, per the rule above):
 
 | Event | Fires when |
 |---|---|
@@ -72,7 +72,7 @@ CTAs across the site (hero carousel, header nav, plan tier CTAs, fleet
 CTAs, distribution outbounds, Strapi article CTAs) are tagged with
 HTML data attributes. A global `document` click listener picks them up
 and fires the matching event. Backend devs don't need to do anything
-special here — these flow through `/v1/meta/capi` like any other event.
+special here — these flow through `capi.navitag.app` like any other event.
 Recognized attributes (for context):
 
 ```
@@ -98,7 +98,7 @@ Strapi-managed HTML, so content authors can tag CTAs without code
 changes. Backend implication:
 
 - ✅ Events from inside article HTML look identical at the wire level
-  to events from the rest of the site. Same `/v1/meta/capi` flow.
+  to events from the rest of the site. Same `capi.navitag.app` flow.
 - ❌ Strapi authors **cannot** embed `<script>fbq(...)</script>` in
   article body — HTML5 disallows execution of scripts inserted via
   `innerHTML`. They must use `data-pixel-*` attributes.
@@ -117,10 +117,9 @@ changes. Backend implication:
 - **No consent gate, by explicit decision.** Meta Pixel + CAPI mirror
   fire for every visitor in every jurisdiction. The product owner has
   accepted the PH DPA / GDPR / CCPA exposure in exchange for 100%
-  event coverage. Backend should NOT filter incoming `/v1/meta/capi`
-  traffic by jurisdiction or any consent flag — frontend will not
-  send one. Re-confirm with the product owner before adding any
-  gating logic.
+  event coverage. Backend should NOT filter incoming CAPI traffic by
+  jurisdiction or any consent flag — frontend will not send one.
+  Re-confirm with the product owner before adding any gating logic.
 
 ---
 
@@ -134,7 +133,7 @@ changes. Backend implication:
 │       │                                                             │
 │       │   Every track call ALSO fires:                              │
 │       ▼                                                             │
-│  fetch POST  ────►  api.navitag.net/v1/meta/capi   (mirror)         │
+│  fetch POST  ────►  capi.navitag.app   (mirror)                     │
 │                                                                     │
 │  On checkout /complete, frontend pre-mints purchase_event_id and    │
 │  stuffs it into cart.metadata. Medusa reads it and fires server-    │
@@ -143,18 +142,18 @@ changes. Backend implication:
                           │                            │
                           ▼                            ▼
         ┌─────────────────────────────┐  ┌─────────────────────────────┐
-        │ api.navitag.net/v1          │  │ shopapi.navitag.com         │
-        │ (PHP / MySQL — unified API) │  │ (MedusaJS v2)               │
+        │ capi.navitag.app            │  │ shopapi.navitag.com         │
+        │ (dedicated CAPI service)    │  │ (MedusaJS v2)               │
         │                             │  │                             │
-        │  POST /v1/meta/capi         │  │  order.placed subscriber:   │
+        │  POST /  (event endpoint)   │  │  order.placed subscriber:   │
         │   ├─ adds client_ip         │  │   ├─ reads cart.metadata    │
         │   ├─ forwards to Meta       │  │   ├─ hashes user_data from  │
         │   └─ logs success/failure   │  │   │   order.email + addr    │
         │                             │  │   └─ POSTs Purchase to Meta │
         │  All non-Purchase events    │  │                             │
         │  flow through here.         │  │  Purchase only — every other│
-        │                             │  │  event goes via the unified │
-        │                             │  │  /v1/meta/capi proxy.       │
+        │                             │  │  event goes via the         │
+        │                             │  │  capi.navitag.app proxy.    │
         └─────────────────────────────┘  └─────────────────────────────┘
                           │                            │
                           └─────────────┬──────────────┘
@@ -165,10 +164,10 @@ changes. Backend implication:
 
 **Why the split**:
 
-- **Unified API owns the proxy** for browser-mirrored events because the
-  browser already trusts it (it's the same origin Firebase auth and
-  contact-form posts go through), and PHP+MySQL is the simplest place to
-  log + queue + retry.
+- **`capi.navitag.app` owns the proxy** for browser-mirrored events as a
+  dedicated service. Isolating CAPI on its own subdomain keeps event
+  traffic off the unified API's request budget and makes per-IP rate
+  limiting / queueing / retry a single-purpose concern.
 - **Medusa owns server-side `Purchase`** because the order isn't real
   until `/cart/complete` returns. Firing it from a Medusa subscriber
   guarantees Meta gets `Purchase` even if the user closes the browser
@@ -177,8 +176,8 @@ changes. Backend implication:
 
 **Why we still mirror Purchase from the browser**: redundancy. If the
 Medusa subscriber fails (transient Meta API outage), the browser's
-mirror via the unified API is the fallback. If both fire, dedup handles
-it. If neither fires, we have a true outage — log and alert.
+mirror via `capi.navitag.app` is the fallback. If both fire, dedup
+handles it. If neither fires, we have a true outage — log and alert.
 
 ---
 
@@ -200,9 +199,9 @@ properly to ads.
 
 ---
 
-## Scope 1 — Unified API (`api.navitag.net/v1`)
+## Scope 1 — CAPI service (`capi.navitag.app`)
 
-### `POST /v1/meta/capi`
+### `POST https://capi.navitag.app/`
 
 Accepts a single Meta CAPI event from the browser, enriches it with
 server-side fields (IP), and forwards to Meta's `/events` endpoint.
@@ -381,7 +380,7 @@ my Purchase didn't fire") to specific records.
 ## Scope 2 — MedusaJS v2 (`shopapi.navitag.com`)
 
 Only `Purchase` is owned by Medusa. Everything else routes through
-`/v1/meta/capi` on the unified backend.
+`capi.navitag.app`.
 
 ### Subscriber: `order.placed`
 
@@ -581,8 +580,8 @@ Purchase — start with Purchase only.
 
 Before flipping production traffic to the live CAPI token:
 
-### Unified API
-- [ ] `POST /v1/meta/capi` returns 200 within 100ms p95
+### CAPI service (`capi.navitag.app`)
+- [ ] `POST https://capi.navitag.app/` returns 200 within 100ms p95
 - [ ] CORS preflight (`OPTIONS`) returns proper headers
 - [ ] Per-IP rate limit fires above threshold (test with synthetic load)
 - [ ] Sample event with `test_event_code` lands in Meta Test Events tab
@@ -623,9 +622,9 @@ the backend will receive:
 
 Frontend changes for CAPI **do not require coordination** with the
 backend — the browser already mirrors to whatever endpoint
-`metaCapiEndpoint` points at. Until the backend implements
-`POST /v1/meta/capi`, mirror calls will 404 silently (browser logs a
-warning, page is unaffected).
+`metaCapiEndpoint` points at. Until the CAPI service at
+`capi.navitag.app` is live, mirror calls will fail silently (browser
+logs a warning, page is unaffected).
 
 ---
 
@@ -635,15 +634,18 @@ warning, page is unaffected).
   mirror fire for every visitor in every jurisdiction by explicit
   product-owner decision; the PH DPA / GDPR / CCPA exposure has been
   accepted in exchange for 100% event coverage. Backend should NOT
-  filter incoming `/v1/meta/capi` traffic by jurisdiction or any
-  consent flag — frontend will not send one. Re-confirm with the
-  product owner before adding any gating logic.
+  filter incoming CAPI traffic by jurisdiction or any consent flag —
+  frontend will not send one. Re-confirm with the product owner
+  before adding any gating logic.
 - CAPI for offline conversions (e.g. fleet contracts signed via sales).
   Different Meta endpoint, different auth.
 - Per-event CAPI access tokens for principle-of-least-privilege.
 
 ---
 
-_Last updated: 2026-04-29 (added `SubmitApplication` + `Login` custom + footer/region-switch CTA events to the wired list; request shape unchanged). Source-of-truth for the contract — when you
-change the request shape on either side, update this document in the
-same PR._
+_Last updated: 2026-04-29 (CAPI moved to dedicated subdomain
+`capi.navitag.app`; previously routed through `api.navitag.net/v1/meta/capi`
+on the unified API. Request body shape unchanged — only the URL moves.
+Frontend `metaCapiEndpoint` already points at the new host.) Source-of-truth
+for the contract — when you change the request shape on either side,
+update this document in the same PR._

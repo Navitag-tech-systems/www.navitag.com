@@ -13,8 +13,8 @@
 //     audiences without param filters.
 //
 // CAPI mirror:
-//   • Every track / trackCustom call POSTs to the unified backend's
-//     /v1/meta/capi endpoint with the same event_id, hashed user_data
+//   • Every track / trackCustom call POSTs to the dedicated CAPI service
+//     at capi.navitag.app with the same event_id, hashed user_data
 //     (incl. _fbp / _fbc cookies), event_source_url, and custom_data.
 //   • Backend forwards to Meta with the access token + the request IP
 //     (which the browser cannot reliably know).

@@ -224,9 +224,10 @@ In **Ads Manager → Audiences → Custom Audience → Website**:
 
 ## 7. Future work (not yet implemented)
 
-- **Conversions API mirror** — the plugin already mints unique `eventID`
-  per event for browser/server dedup. A `/api/meta-capi` Nuxt server
-  route is the next step.
+- **Conversions API mirror** — already wired. The plugin mints a unique
+  `eventID` per event and POSTs to `capi.navitag.app` (configured via
+  `runtimeConfig.public.metaCapiEndpoint`). Backend service implementation
+  spec: [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md).
 - **Advanced Matching** — push hashed `em`, `ph`, `external_id`, country
   to `fbq('init', …, { … })` once the user resolves in `useBasicStore`.
   Lifts EMQ score significantly (especially for B2B leads where one
