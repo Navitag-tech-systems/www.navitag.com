@@ -148,7 +148,7 @@ if (import.meta.client) {
                 </div>
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col">
                   <p class="text-sm font-semibold text-gray-800">Basak, San Nicolas Branch</p>
-                  <p class="text-sm text-gray-600 mb-3 flex-grow">Cebu South Road Corner Eucalyptus Street, Basak, San Nicholas, Cebu City, Cebu 6000</p>
+                  <p class="text-sm text-gray-600 mb-3 flex-grow">Cebu South Road Corner Eucalyptus Street, Basak, San Nicolas, Cebu City, Cebu 6000</p>
                   <a href="https://maps.google.com/?q=10.289948459913697,123.87116804002402" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-xs font-semibold text-navitag-blue hover:underline mt-auto" data-pixel-event="FindLocation" data-pixel-audience="b2c" data-pixel-content-name="retailer_cmap_basak_san_nicolas" data-pixel-content-category="retail_locator">
                     <i class="fas fa-map-marked-alt mr-1"></i> View on Map
                   </a>

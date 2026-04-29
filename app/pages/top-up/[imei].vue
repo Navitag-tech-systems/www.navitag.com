@@ -359,7 +359,7 @@ function onLoginSuccess() {
       <div v-if="device" class="mt-10">
         <h2 class="text-xl font-extrabold text-gray-950 mb-2">Choose a Data Plan</h2>
         <p class="text-sm text-gray-500">Select a plan to renew connectivity for your <strong>{{ device.model }}</strong>.</p>
-        <p class="text-sm text-gray-500 mb-6">Changing your plan will convert all of your unused allocation to the new teir. This will be added on top of the top-up purchased.</p>
+        <p class="text-sm text-gray-500 mb-6">Changing your plan will convert all of your unused allocation to the new tier. This will be added on top of the top-up purchased.</p>
 
         <div v-if="productsLoading" class="text-center py-10">
           <i class="fas fa-spinner fa-spin fa-lg text-navitag-blue"></i>

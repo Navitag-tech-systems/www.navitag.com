@@ -142,7 +142,7 @@ onBeforeUnmount(stop)
                     <i class="fas fa-triangle-exclamation text-navitag-orange w-4 text-center" aria-hidden="true"></i>
                   </li>
                   <li class="flex items-center justify-end gap-2">
-                    <span>Sharable links</span>
+                    <span>Shareable links</span>
                     <i class="fas fa-share-nodes text-navitag-orange w-4 text-center" aria-hidden="true"></i>
                   </li>
                 </ul>

@@ -57,7 +57,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 
 **Architecture**
 
-- **Plugin**: `app/plugins/meta-pixel.client.ts` — boots `fbq`, exposes typed `$fbq()` helper (returns `eventID`), `$fbq.custom()`, `$fbq.mirror()`, and a global `document` click listener for declarative CTA tracking. Every event is also POSTed to the unified backend's `/v1/meta/capi` endpoint for server-side dedup with the same `event_id`.
+- **Plugin**: `app/plugins/meta-pixel.client.ts` — boots `fbq`, exposes typed `$fbq()` helper (returns `eventID`), `$fbq.custom()`, `$fbq.mirror()`, and a global `document` click listener for declarative CTA tracking. Every event is also POSTed to the dedicated CAPI service at `capi.navitag.app` for server-side dedup with the same `event_id`.
 - **Audience helper**: `app/composables/useAudience.ts` — single source of truth for `b2c | b2b` inference. `inferAudience({ explicit?, subject?, returnTo?, path? })` is auto-imported into every component. The plugin decorates every event with `audience` if the caller did not pass one.
 - **User-data hashing**: `app/utils/metaUserData.ts` — SHA-256 hashing for Advanced Matching (`em`, `external_id`, `country`, etc.) + `_fbp` / `_fbc` cookie capture + click-ID synthesis from `?fbclid=`. Push to both `fbq('init', …, advancedMatching)` and the CAPI mirror payload.
 - **Two ways to fire events**:
@@ -116,7 +116,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 - [ ] Backend `POST /v1/user/sync` cache-control: `max-age=172800` (48h) — consider shortening so country changes propagate faster.
 - [x] ~~Meta Pixel — B2C / B2B audience tagging across all events (done; see [`META_EVENTS.md`](./META_EVENTS.md))~~
 - [x] ~~Meta Pixel — frontend CAPI mirror dispatch + Advanced Matching + `_fbp`/`_fbc` capture + `Purchase` `contents[]` enrichment + cart-metadata stuffing for server-side dedup (done; backend implementation spec in [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md))~~
-- [ ] **Backend** — implement `POST /v1/meta/capi` on `api.navitag.net` (PHP) and `order.placed` Meta CAPI subscriber on Medusa v2. Spec: [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md). Requires Meta CAPI access token + domain verification.
+- [ ] **Backend** — implement the CAPI service at `capi.navitag.app` (dedicated subdomain, accepts `POST /`) and `order.placed` Meta CAPI subscriber on Medusa v2. Spec: [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md). Requires Meta CAPI access token + domain verification.
 - [ ] Meta Pixel — move `AddPaymentInfo` trigger from "card fields rendered" to "first card-field input" so the signal correlates with intent, not infrastructure load.
 - [x] ~~Meta Pixel — `Login` custom event on successful sign-in (audience-tagged) for retention audiences~~ (wired in `/login` and `LoginOverlay`; audience inferred from `?return=` on /login, route-inferred elsewhere)
 <!-- Consent gate intentionally not implemented — see "Known edge cases" above. Do not re-add without explicit owner sign-off. -->
