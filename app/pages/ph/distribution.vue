@@ -68,17 +68,17 @@ if (import.meta.client) {
           </div>
         </a>
 
-        <!-- Navitag Direct -->
-        <NuxtLink to="/shop" class="group block bg-white p-8 rounded-3xl border-2 border-transparent hover:border-navitag-blue shadow-lg shadow-gray-200/50 hover:shadow-navitag-blue/20 transition-all text-center flex flex-col h-full" data-pixel-event="Lead" data-pixel-audience="b2c" data-pixel-content-name="retailer_navitag_direct_ph" data-pixel-content-category="retailer_outbound" data-pixel-lead-type="retailer_outbound">
-          <div class="w-16 h-16 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+        <!-- Navitag Direct — coming soon (PH online store not yet live) -->
+        <div class="group block bg-white p-8 rounded-3xl border-2 border-transparent shadow-lg shadow-gray-200/50 text-center flex flex-col h-full opacity-60 cursor-not-allowed" aria-disabled="true">
+          <div class="w-16 h-16 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-6">
             <img src="/logo-sm.png" alt="Navitag Logo" class="h-8 w-auto">
           </div>
           <h3 class="text-xl font-bold text-gray-950 mb-2">Navitag Direct</h3>
           <p class="text-sm text-gray-600 mb-8 flex-grow">Buy directly from our official online store with seamless local checkout and full warranty support.</p>
-          <div class="inline-block px-6 py-2.5 rounded-full bg-navitag-blue text-white text-sm font-semibold w-full">
-            Open Online Store <i class="fas fa-arrow-right ml-1 text-xs"></i>
+          <div class="inline-block px-6 py-2.5 rounded-full bg-gray-200 text-gray-500 text-sm font-semibold w-full">
+            Coming Soon
           </div>
-        </NuxtLink>
+        </div>
       </div>
     </div>
   </section>
