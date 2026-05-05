@@ -74,17 +74,17 @@ Fires when the user actually completes a step.
 
 | Step | Event | Source file (line) | Audience | Key params |
 |---|---|---|---|---|
-| Buy Now on product page | `AddToCart` | `app/pages/shop/product/[slug].vue:165` | `b2c` | `content_ids`, `content_type:'product'`, `value`, `currency`, `num_items` |
-| Pick plan tier on top-up | `AddToCart` | `app/pages/top-up/[imei].vue:282` | `b2c` | `content_ids`, `content_type:'data_plan'`, `value`, `currency`, `num_items:1` |
-| Submit shipping on `/shop/shipping` | `InitiateCheckout` | `app/pages/shop/shipping.vue:288` | `b2c` | `content_ids`, `content_type:'product'`, `value`, `currency`, `num_items` |
-| Card fields rendered (shop checkout) | `AddPaymentInfo` | `app/pages/shop/checkout/[cart_id].vue:298` | `b2c` | `value`, `currency`, `content_ids`, `num_items` |
-| Card fields rendered (plan checkout) | `AddPaymentInfo` | `app/pages/plan-checkout/[cart_id].vue:297` | `b2c` | `value`, `currency`, `content_type:'data_plan'` |
-| Order completed (shop) | `Purchase` | `app/pages/shop/checkout/[cart_id].vue:382` | `b2c` | `value`, `currency`, `content_ids`, `num_items`, `transaction_id` |
-| Order completed (plan) | `Purchase` | `app/pages/plan-checkout/[cart_id].vue:373` | `b2c` | `value`, `currency`, `content_ids`, `content_type:'data_plan'`, `num_items`, `transaction_id` |
+| Buy Now on product page | `AddToCart` | `app/pages/shop/product/[slug].vue:186` | `b2c` | `content_ids`, `content_type:'product'`, `value`, `currency`, `num_items` |
+| Pick plan tier on top-up | `AddToCart` | `app/pages/top-up/[imei].vue:283` | `b2c` | `content_ids`, `content_type:'data_plan'`, `value`, `currency`, `num_items:1` |
+| Submit shipping on `/shop/shipping` | `InitiateCheckout` | `app/pages/shop/shipping.vue:298` | `b2c` | `content_ids`, `content_type:'product'`, `value`, `currency`, `num_items` |
+| Card fields rendered (shop checkout) | `AddPaymentInfo` | `app/pages/shop/checkout/[cart_id].vue:299` | `b2c` | `value`, `currency`, `content_ids`, `num_items` |
+| Card fields rendered (plan checkout) | `AddPaymentInfo` | `app/pages/plan-checkout/[cart_id].vue:301` | `b2c` | `value`, `currency`, `content_type:'data_plan'` |
+| Order completed (shop) | `Purchase` (browser) + `$fbq.mirror` (CAPI) | `app/pages/shop/checkout/[cart_id].vue:442` | `b2c` | `value`, `currency`, `content_ids`, `num_items`, `transaction_id`. Browser pixel uses pre-minted `purchase_event_id` from cart metadata so the Medusa `order.placed` subscriber dedupes against the same id. |
+| Order completed (plan) | `Purchase` (browser) + `$fbq.mirror` (CAPI) | `app/pages/plan-checkout/[cart_id].vue:461` | `b2c` | `value`, `currency`, `content_ids`, `content_type:'data_plan'`, `num_items`, `transaction_id`. Same dedup pattern as shop. |
 | Contact form submit success | `Lead` + `LeadB2B`/`LeadB2C` | `app/components/ContactForm.vue:81` | inferred from `subject` | `content_name` (subject), `content_category` (`b2b_contact`/`b2c_contact`), `lead_type`, `country_code` |
-| Email signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:91` | inferred from `?intent` / `?return` | `method:'email'`, `lead_type` (`business_signup`/`consumer_signup`) |
-| Google signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:115` | inferred | `method:'google'`, `lead_type` |
-| Apple signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:149` | inferred | `method:'apple'`, `lead_type` |
+| Email signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:110` | inferred from `?intent` / `?return` | `method:'email'`, `lead_type` (`business_signup`/`consumer_signup`) |
+| Google signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:136` | inferred | `method:'google'`, `lead_type` |
+| Apple signup success | `CompleteRegistration` + parallel custom | `app/pages/signup.vue:172` | inferred | `method:'apple'`, `lead_type` |
 | Login success — `/login` page | `Custom: Login` | `app/pages/login.vue` | inferred from `?return=` | `method: 'email' \| 'google' \| 'apple'` |
 | Login success — `LoginOverlay` | `Custom: Login` | `app/components/LoginOverlay.vue` | route-inferred at fire time | Fires from /shop, /top-up, /invite. Same `method` param. |
 | Invite claim success | `SubmitApplication` + parallel `LeadB2C`/`LeadB2B` | `app/pages/invite/view/[token].vue` | route-inferred | `content_type: 'tracker_share'`, `num_items: granted_devices.length`, `lead_type: 'invite_claim'` |
@@ -153,10 +153,16 @@ Adding the attributes to any element automatically registers it.
 |---|---|---|---|---|
 | Shopee outbound | `Lead` + `LeadB2C` | `b2c` | `retailer_shopee_ph` | `retailer_outbound` |
 | Lazada outbound | `Lead` + `LeadB2C` | `b2c` | `retailer_lazada_ph` | `retailer_outbound` |
-| Navitag Direct → /shop | `Lead` + `LeadB2C` | `b2c` | `retailer_navitag_direct_ph` | `retailer_outbound` |
-| Retail map link (Quirino, Cebu, Mandaue, Basak, Tabunok, Talisay, Carcar) | `FindLocation` | `b2c` | `retailer_qhas_novaliches`, `retailer_cmap_*` | — |
+| Navitag Shop → `/shop` | _no event_ | — | — | Internal `<NuxtLink>`; intentionally untagged so the destination's own `ViewContent` / `AddToCart` fires unmuddled. |
+| Retail map link (Quirino, Cebu, Mandaue, Basak, Tabunok, Talisay, Carcar) | `FindLocation` | `b2c` | `retailer_qhas_novaliches`, `retailer_cmap_*` | `content_category: retail_locator` |
 | "Contact Fleet Sales" (mailto bulk pricing) | `Contact` + `LeadB2B` | **`b2b`** | `distribution_ph_bulk_sales` | `reseller_inquiry` |
 | "Become a Reseller" → /ph/contact | `Contact` + `LeadB2B` | **`b2b`** | `distribution_ph_reseller` | `reseller_inquiry` |
+
+> **Note**: `retailer_shopee_ph` and `retailer_lazada_ph` ALSO fire from
+> the PH retailer dropdown on `/shop/product/[slug]` (Buy Now becomes
+> a 3-item menu for PH visitors: Shopee, Lazada, in-app card checkout).
+> Counts roll up across both surfaces by design — keep the names aligned
+> if you ever rename either side.
 
 ### 5.7 PH Footer outbounds — `app/components/FooterRegional.vue` (driven by `app/config/regions.ts`)
 
@@ -208,9 +214,9 @@ In **Meta Events Manager → Test Events / Custom Conversions**:
   to slice reach, intent, and conversion volume by funnel.
 - Use distinct `content_category` values (`b2b_contact`, `fleet_quote`,
   `b2b_intent` vs `b2c_contact`, `plan_intent`, `retailer_outbound`,
-  `marketing`, `plans`, `fleet`, `auth`, `product`, `plan_renewal`,
-  `distribution`, `contact`) to split dashboards without writing custom
-  filters.
+  `retail_locator`, `marketing`, `plans`, `fleet`, `auth`, `product`,
+  `plan_renewal`, `distribution`, `contact`) to split dashboards without
+  writing custom filters.
 
 In **Ads Manager → Audiences → Custom Audience → Website**:
 
@@ -241,5 +247,5 @@ In **Ads Manager → Audiences → Custom Audience → Website**:
 
 ---
 
-_Last updated: 2026-04-29 (Login + invite + footer + hygiene fires audit). Maintained alongside `app/plugins/meta-pixel.client.ts`
+_Last updated: 2026-05-05 (line-number drift fix; Navitag Shop activated; PH product-page retailer dropbox shares retailer_*_ph names with the distribution page). Maintained alongside `app/plugins/meta-pixel.client.ts`
 and `app/composables/useAudience.ts`._
