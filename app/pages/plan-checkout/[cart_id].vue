@@ -93,8 +93,12 @@ const sortedCountries = computed(() =>
 // PayPal card fields instance + live validity from onChange events
 let cardFields: any = null
 const cardValid = ref(false)
+// Snapshot of the most recent per-field state from PayPal's onChange. Kept
+// outside Vue reactivity (mutates on every keystroke; only read on failure).
+let lastCardFieldsState: any = null
 
 function handleCardChange(state: any) {
+  lastCardFieldsState = state
   const f = state?.fields || {}
   cardValid.value = !!(
     f.cardNumberField?.isValid &&
@@ -342,11 +346,44 @@ async function submitPayment() {
       paying.value = false
     }
   } catch (e: any) {
+    // If onApprove already fired and we're navigating away, swallow.
+    // submit()'s promise stays pending until PayPal's hidden iframe
+    // confirms — and Nuxt unmounts the iframe out from under it during
+    // navigation, which surfaces here as
+    //   "Window closed for postrobot_method before response"
+    // The order is already complete; showing an error would be wrong.
+    if (finalizing.value) {
+      console.warn('[plan-checkout] submit() rejected after onApprove (post-navigation iframe teardown) — ignoring:', e?.message)
+      return
+    }
+
     // Submit-time errors are pre-capture: customer cancelled 3DS popup,
     // bad OTP, card rejected at confirm, network glitch. PayPal order
     // isn't consumed, so they can retry with the same Card Fields —
     // keep them on the page with an inline message.
+    //
+    // PayPal SDK errors stringify to just the code (e.g. "Error:
+    // INVALID_NUMBER") and hide the useful detail on non-enumerable
+    // properties. Dump every own-property + the latest field-validity
+    // snapshot so support has something to work with.
+    const dump: Record<string, unknown> = {}
+    for (const k of Object.getOwnPropertyNames(e || {})) {
+      try { dump[k] = (e as any)[k] } catch { /* swallow getter errors */ }
+    }
+    const fieldSnapshot = lastCardFieldsState?.fields
+      ? Object.fromEntries(
+          Object.entries(lastCardFieldsState.fields).map(([k, v]: [string, any]) => [k, {
+            isValid: v?.isValid,
+            isEmpty: v?.isEmpty,
+            isPotentiallyValid: v?.isPotentiallyValid,
+            isFocused: v?.isFocused,
+          }]),
+        )
+      : null
     console.error('[plan-checkout] cardFields.submit() threw →', e)
+    console.error('[plan-checkout] error properties →', dump)
+    console.error('[plan-checkout] cardValid (computed) →', cardValid.value)
+    console.error('[plan-checkout] field state at failure →', fieldSnapshot)
     paying.value = false
     finalizing.value = false
     paymentError.value = friendlySubmitError(e)
@@ -458,6 +495,28 @@ function friendlySubmitError(e: any): string {
   // extension nuked it. Translate to actionable copy.
   if (/window closed before response/i.test(raw)) {
     return 'The 3D Secure verification window was closed before authentication finished. Please tap Pay again and complete the bank verification step without closing the popup. If your browser blocked it, allow popups for paypal.com and try again.'
+  }
+  // Validation codes PayPal throws from cardFields.submit(). Surface
+  // human-readable copy instead of leaking the raw enum to the customer.
+  //
+  // NOTE: the SDK can surface server-side issues (PAYER_CANNOT_PAY,
+  // currency/account mismatches) under the same INVALID_NUMBER label.
+  // Inspect the network response details[0].issue in devtools to
+  // distinguish a real card-data failure from a merchant-config one.
+  if (/PAYER_CANNOT_PAY/i.test(raw)) {
+    return 'Your card was declined for this transaction. This often means the card cannot be charged in this currency. Please try a different card.'
+  }
+  if (/INVALID_NUMBER/i.test(raw)) {
+    return 'That card number doesn\'t look right. Please re-enter it and try again.'
+  }
+  if (/INVALID_EXPIRY|EXPIRED_CARD/i.test(raw)) {
+    return 'The card expiry date is invalid or the card has expired. Please check and try again.'
+  }
+  if (/INVALID_SECURITY_CODE|INVALID_CVV/i.test(raw)) {
+    return 'The security code (CVV) is invalid. Please re-enter the 3- or 4-digit code on your card.'
+  }
+  if (/CARD_TYPE_NOT_SUPPORTED|UNSUPPORTED_CARD_TYPE/i.test(raw)) {
+    return 'That card type is not supported. Please try a different card.'
   }
   if (raw && raw.length < 200) return raw
   return 'Payment could not be submitted. Please double-check your card details and try again.'

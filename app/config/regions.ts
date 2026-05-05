@@ -94,7 +94,6 @@ export const REGIONS: Record<string, RegionConfig> = {
       { label: 'Data Plans', to: '/ph/data-plans' },
       { label: 'For Business', to: '/ph/business' },
     ],
-    cta: { label: 'Contact Local Sales', href: '/ph/contact' },
     footerGroups: [
       {
         heading: 'Shopping',

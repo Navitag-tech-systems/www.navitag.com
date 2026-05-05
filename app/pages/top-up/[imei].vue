@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { UNIFIED_API_URL, MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
+import { UNIFIED_API_URL, MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY, MEDUSA_HIDDEN_SALES_CHANNEL_ID, MEDUSA_DIGITAL_DELIVERY_OPTION_ID } from '~/variables'
 
 definePageMeta({
   layout: false,
@@ -253,6 +253,7 @@ async function buyPlan(productId: string) {
       method: 'POST',
       body: {
         region_id: regionId.value,
+        sales_channel_id: MEDUSA_HIDDEN_SALES_CHANNEL_ID,
         email: customerEmail,
         metadata: cartMeta,
       },
@@ -272,7 +273,7 @@ async function buyPlan(productId: string) {
     // 4. Add digital delivery shipping method
     await medusaFetch(`/store/carts/${cartId}/shipping-methods`, {
       method: 'POST',
-      body: { option_id: 'so_01KNNDCWCEWGBC8BA71HG92T10' },
+      body: { option_id: MEDUSA_DIGITAL_DELIVERY_OPTION_ID },
     })
 
     // 5. Track AddToCart for the chosen plan variant
@@ -289,18 +290,18 @@ async function buyPlan(productId: string) {
       audience: 'b2c',
     })
 
-    // 6. Navigate to checkout
-    navigateTo(`/plan-checkout/${cartId}`)
+    // 6. Navigate to checkout — keep cartLoading=true through the route
+    //    transition so the button spinner doesn't flash back to its idle
+    //    label while Nuxt resolves the next page.
+    await navigateTo(`/plan-checkout/${cartId}`)
   } catch (e: any) {
     cartError.value = e?.data?.message || e?.message || 'Failed to create cart. Please try again.'
-  } finally {
     cartLoading.value = false
   }
 }
 
 function onLoginSuccess() {
   showLogin.value = false
-  isAuthenticated.value = true
   checkDevice()
 }
 </script>

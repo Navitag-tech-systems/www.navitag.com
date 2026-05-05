@@ -2,10 +2,10 @@
 definePageMeta({ layout: 'ph' })
 
 useSeoMeta({
-  title: 'Navitag - Where to Buy | Southeast Asia',
-  description: 'Buy genuine Navitag GPS trackers in the Philippines and Southeast Asia — via Shopee, Lazada, our online store, or authorized installers in Metro Manila and Cebu.',
-  ogTitle: 'Navitag - Where to Buy | Southeast Asia',
-  ogDescription: 'Find official Navitag stores and authorized retailers in the Philippines and Southeast Asia.',
+  title: 'Navitag - Where to Buy | Philippines',
+  description: 'Buy genuine Navitag GPS trackers in the Philippines — via Shopee, Lazada, or authorized installers in Metro Manila and Cebu.',
+  ogTitle: 'Navitag - Where to Buy | Philippines',
+  ogDescription: 'Find official Navitag stores and authorized retailers in the Philippines.',
   ogUrl: 'https://navitag.com/ph/distribution',
 })
 useHead({ link: [{ rel: 'canonical', href: 'https://navitag.com/ph/distribution' }] })
@@ -68,17 +68,17 @@ if (import.meta.client) {
           </div>
         </a>
 
-        <!-- Navitag Direct — coming soon (PH online store not yet live) -->
-        <div class="group block bg-white p-8 rounded-3xl border-2 border-transparent shadow-lg shadow-gray-200/50 text-center flex flex-col h-full opacity-60 cursor-not-allowed" aria-disabled="true">
-          <div class="w-16 h-16 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-6">
+        <!-- Navitag Shop — official direct online store -->
+        <NuxtLink to="/shop" class="group block bg-white p-8 rounded-3xl border-2 border-transparent hover:border-navitag-blue shadow-lg shadow-gray-200/50 hover:shadow-navitag-blue/20 transition-all text-center flex flex-col h-full">
+          <div class="w-16 h-16 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
             <img src="/logo-sm.png" alt="Navitag Logo" class="h-8 w-auto">
           </div>
-          <h3 class="text-xl font-bold text-gray-950 mb-2">Navitag Direct</h3>
+          <h3 class="text-xl font-bold text-gray-950 mb-2">Navitag Shop</h3>
           <p class="text-sm text-gray-600 mb-8 flex-grow">Buy directly from our official online store with seamless local checkout and full warranty support.</p>
-          <div class="inline-block px-6 py-2.5 rounded-full bg-gray-200 text-gray-500 text-sm font-semibold w-full">
-            Coming Soon
+          <div class="inline-block px-6 py-2.5 rounded-full bg-navitag-blue text-white text-sm font-semibold w-full">
+            Shop Now <i class="fas fa-arrow-right ml-1 text-xs"></i>
           </div>
-        </div>
+        </NuxtLink>
       </div>
     </div>
   </section>
@@ -88,7 +88,7 @@ if (import.meta.client) {
     <div class="container mx-auto px-6 max-w-4xl">
       <div class="text-center mb-12">
         <h2 class="text-2xl font-extrabold tracking-tight text-gray-950 mb-4">Authorized Retail Partners</h2>
-        <p class="text-gray-600 max-w-2xl mx-auto">Prefer professional installation for your vehicle dashcams or stealth trackers? Visit our certified local partners across Southeast Asia.</p>
+        <p class="text-gray-600 max-w-2xl mx-auto">Prefer professional installation for your vehicle dashcams or stealth trackers? Visit our certified local partners across the Philippines.</p>
       </div>
 
       <div class="mb-10">
@@ -193,7 +193,7 @@ if (import.meta.client) {
 
       <div class="mt-16 pt-12 border-t border-gray-100">
         <h2 class="text-2xl font-extrabold tracking-tight text-gray-950 mb-4">Interested in Reselling Navitag?</h2>
-        <p class="text-gray-600 mb-8">Join our growing network of authorized resellers across the Philippines and Southeast Asia. Get partner pricing, marketing support, and dedicated account management.</p>
+        <p class="text-gray-600 mb-8">Join our growing network of authorized resellers across the Philippines. Get partner pricing, marketing support, and dedicated account management.</p>
         <NuxtLink to="/ph/contact" class="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-navitag-orange text-white font-semibold hover:bg-opacity-90 transition shadow-lg shadow-navitag-orange/20" data-pixel-event="Contact" data-pixel-audience="b2b" data-pixel-content-name="distribution_ph_reseller" data-pixel-content-category="b2b_intent" data-pixel-lead-type="reseller_inquiry">
           Become a Reseller <i class="fas fa-handshake ml-2"></i>
         </NuxtLink>

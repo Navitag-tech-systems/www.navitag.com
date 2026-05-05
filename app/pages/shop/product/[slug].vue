@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
+import { MEDUSA_BACKEND_URL, MEDUSA_PRODUCTS_PUBLISHABLE_KEY } from '~/variables'
 
 definePageMeta({ layout: 'shop' })
 
@@ -45,7 +45,7 @@ const { data: medusaProduct, pending: productLoading, error: productErrorRef, re
         region_id: regionId.value,
         fields: '*variants.calculated_price,*images',
       },
-      headers: { 'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY },
+      headers: { 'x-publishable-api-key': MEDUSA_PRODUCTS_PUBLISHABLE_KEY },
     })
     return res.products?.[0] ?? null
   },
@@ -128,6 +128,21 @@ const activeImage = ref(0)
 const quantity = ref(1)
 const buyNowLoading = ref(false)
 const buyNowError = ref('')
+
+// PH retail links — kept in sync with /ph/distribution. PH visitors see a
+// retailer dropdown instead of a direct Buy Now because Navitag Direct's
+// PHP storefront isn't live yet; Shopee + Lazada are the legitimate paths.
+const SHOPEE_PH_URL = 'https://shopee.ph/ahw7ln8f3c'
+const LAZADA_PH_URL = 'https://www.lazada.com.ph/shop/navitag-tech?path=index.htm&lang=en'
+const isPH = computed(() => (basic.country || '').toUpperCase() === 'PH')
+const showRetailerMenu = ref(false)
+function toggleRetailerMenu() { showRetailerMenu.value = !showRetailerMenu.value }
+function closeRetailerMenu() { showRetailerMenu.value = false }
+// Defer until after the click's default action runs. Without this, a
+// synchronous close unmounts the <a> via v-if before some browsers
+// (notably mobile WebKit) honour target="_blank", swallowing the navigation.
+function closeRetailerMenuAfterNav() { setTimeout(closeRetailerMenu, 0) }
+function buyNowFromMenu() { closeRetailerMenu(); buyNow() }
 const { $fbq } = useNuxtApp()
 
 // Fire ViewContent once per product, after Medusa returns the product so we
@@ -331,14 +346,87 @@ useHead({
               <i class="fas fa-plus text-xs"></i>
             </button>
           </div>
+          <!-- PH region: retailer dropdown (Shopee, Lazada, Buy Now via card) -->
+          <div v-if="isPH" class="relative flex-1">
+            <button
+              type="button"
+              class="w-full h-12 rounded-full bg-navitag-blue text-white text-sm font-semibold hover:bg-[#006ADB] transition shadow-lg shadow-navitag-blue/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              :disabled="!customerReady || !livePrice || buyNowLoading"
+              :aria-expanded="showRetailerMenu"
+              aria-haspopup="menu"
+              @click="toggleRetailerMenu"
+            >
+              <i v-if="buyNowLoading" class="fas fa-spinner fa-spin"></i>
+              <span>Buy now<span v-if="customerReady && totalPrice"> · {{ totalPrice }}</span></span>
+              <i v-if="!buyNowLoading" class="fas fa-chevron-down text-[10px] transition-transform" :class="{ 'rotate-180': showRetailerMenu }"></i>
+            </button>
+
+            <!-- Backdrop closes menu on outside tap -->
+            <div v-if="showRetailerMenu" class="fixed inset-0 z-10" @click="closeRetailerMenu"></div>
+
+            <div
+              v-if="showRetailerMenu"
+              role="menu"
+              class="absolute left-0 right-0 top-full mt-2 z-20 rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden"
+            >
+              <a
+                :href="SHOPEE_PH_URL"
+                target="_blank"
+                rel="noopener noreferrer"
+                role="menuitem"
+                class="flex items-center justify-between px-5 py-3.5 bg-[#EE4D2D] text-white text-sm font-semibold hover:brightness-95 transition"
+                data-pixel-event="Lead"
+                data-pixel-audience="b2c"
+                data-pixel-content-name="retailer_shopee_ph"
+                data-pixel-content-category="retailer_outbound"
+                data-pixel-lead-type="retailer_outbound"
+                @click="closeRetailerMenuAfterNav"
+              >
+                <span class="inline-flex items-center gap-2.5"><i class="fas fa-shopping-bag"></i>Shopee</span>
+                <i class="fas fa-external-link-alt text-xs"></i>
+              </a>
+              <a
+                :href="LAZADA_PH_URL"
+                target="_blank"
+                rel="noopener noreferrer"
+                role="menuitem"
+                class="flex items-center justify-between px-5 py-3.5 bg-[#0F146D] text-white text-sm font-semibold hover:brightness-110 transition"
+                data-pixel-event="Lead"
+                data-pixel-audience="b2c"
+                data-pixel-content-name="retailer_lazada_ph"
+                data-pixel-content-category="retailer_outbound"
+                data-pixel-lead-type="retailer_outbound"
+                @click="closeRetailerMenuAfterNav"
+              >
+                <span class="inline-flex items-center gap-2.5"><i class="fas fa-heart"></i>Lazada</span>
+                <i class="fas fa-external-link-alt text-xs"></i>
+              </a>
+              <button
+                type="button"
+                role="menuitem"
+                class="w-full flex items-center justify-between px-5 py-3.5 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 transition disabled:opacity-50 border-t border-gray-100"
+                :disabled="!customerReady || !livePrice || buyNowLoading"
+                @click="buyNowFromMenu"
+              >
+                <span class="inline-flex items-center gap-2.5">
+                  <i v-if="buyNowLoading" class="fas fa-spinner fa-spin"></i>
+                  <i v-else class="fas fa-credit-card"></i>
+                  Buy Now
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Default: direct Buy Now -->
           <button
+            v-else
             type="button"
             class="flex-1 h-12 rounded-full bg-navitag-blue text-white text-sm font-semibold hover:bg-[#006ADB] transition shadow-lg shadow-navitag-blue/20 disabled:opacity-50"
             :disabled="!customerReady || !livePrice || buyNowLoading"
             @click="buyNow"
           >
-            <span v-if="buyNowLoading"><i class="fas fa-spinner fa-spin mr-2"></i>Starting…</span>
-            <span v-else>Buy now<span v-if="customerReady && totalPrice"> · {{ totalPrice }}</span></span>
+            <i v-if="buyNowLoading" class="fas fa-spinner fa-spin mr-2"></i>
+            <span>Buy now<span v-if="customerReady && totalPrice"> · {{ totalPrice }}</span></span>
           </button>
         </div>
         <p v-if="buyNowError" class="mt-2 text-[12.5px] text-red-600">{{ buyNowError }}</p>

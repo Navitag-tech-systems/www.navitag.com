@@ -22,14 +22,17 @@ Front-facing website for the Navitag brand. Nuxt 4 + Tailwind + Pinia, with a gl
 - **Data Plans Pricing**: `DataPlansView.vue` pulls live Medusa `calculated_price` for both `/data-plans` (US/global) and `/ph/data-plans` (PH region). **No static USD fallback** — when Medusa is unavailable or has no price for a tier+term, the card renders "Unavailable · Please try again shortly". Loading state shows skeleton bars. Category handle in Medusa: `track1-data-plan` (no hyphen between "track" and "1").
 
 ### Data Plan Top-Up Flow (digital)
-- **`/top-up/:imei`**: Awaits Firebase auth restore + IP country (`Promise.all`) before routing — eliminates the prior race where products loaded against the IP fallback region. If unauthenticated → login overlay opens with the IP country passed in explicitly.
+- **`/top-up/:imei`**: Awaits Firebase auth restore + IP country (`Promise.all`) before routing — eliminates the prior race where products loaded against the IP fallback region. If unauthenticated → login overlay opens with the IP country passed in explicitly. Cart-create body includes `sales_channel_id: MEDUSA_HIDDEN_SALES_CHANNEL_ID` (the all-scope publishable key is bound to multiple sales channels and Medusa needs the digital-only one disambiguated). Shipping option for digital delivery is `MEDUSA_DIGITAL_DELIVERY_OPTION_ID` (constant in `app/variables.ts`). `buyPlan` keeps `cartLoading=true` through the `await navigateTo()` so the button spinner doesn't flash back to its idle label during the route transition.
 - **Resilient Country Detection**: `fetchCountryCode` retries (5s timeout × 3 attempts, 500ms backoff). On total failure, the page shows an inline retry card.
 - **`/plan-checkout/:cart_id`**: PayPal Card Fields (`pp_paypal_paypal`). Loads SDK with `currency = cart.currency_code`. Country dropdown is **prefilled from `basicStore.country` and locked** — set from the customer's account region. Same finalizing overlay + hard-failure modal pattern as `/shop/checkout`. Retry capped at 1.
+  - **Diagnostics**: `cardFields.submit()` catch dumps every own-property of the PayPal SDK error plus a per-field `isValid/isEmpty/isPotentiallyValid/isFocused` snapshot, since PayPal errors stringify to bare codes (e.g. `"INVALID_NUMBER"`) and hide their `details[]` array. Friendly mappings cover `PAYER_CANNOT_PAY`, `INVALID_NUMBER`, `INVALID_EXPIRY`/`EXPIRED_CARD`, `INVALID_SECURITY_CODE`/`INVALID_CVV`, `CARD_TYPE_NOT_SUPPORTED` so customers see human copy instead of the raw enum.
+  - **Post-success submit rejection**: when `onApprove` fires and we navigate to `/renew-complete`, Vue tears down the PayPal iframe mid-flight and the still-pending `submit()` promise rejects with *"Window closed for postrobot_method before response"*. Catch checks `finalizing.value` and swallows that rejection so it doesn't trip the failure modal after a successful order.
 - **`/renew-complete/:order_id`**: Confirmation page with device info + activation status.
 
 ### Physical-Goods Shop Flow
-- **`/shop` → `/shop/product/track-1`** (302). `/distribution` also 302s to `/shop`.
-- **`/shop/product/[slug]`**: Medusa-driven. Buy now → mints a fresh cart via `cartStore.createCart()` → `addLineItem` → `/shop/shipping`.
+- **`/shop` and `/distribution`** both 301 to `/shop/product/track-1` (config in `nuxt.config.ts`).
+- **`/shop/product/[slug]`**: Medusa-driven. Buy now → mints a fresh cart via `cartStore.createCart()` → `addLineItem` → `/shop/shipping`. Spinner renders inline beside the "Buy now · {price}" label (text stays visible) while loading.
+  - **PH region**: Buy now becomes a dropdown with three options — Shopee (orange `#EE4D2D`), Lazada (deep purple `#0F146D`), and "Buy Now" via card (runs the same Medusa flow). Outbound anchors keep `target="_blank"` and defer their menu-close via `setTimeout` so mobile WebKit doesn't drop the navigation when the originating element is unmounted. Clicking the in-menu Buy Now closes the dropdown and the trigger button itself swaps chevron→spinner + disabled in the same paint as `buyNowLoading` flips true.
 - **`/shop/shipping`**: Single name input (split at submit), required phone with read-only `+<dial code>` prefix from resolved country, billing block with read-only country and `Same as shipping` checkbox (default checked). Prefill overlay covers `loadCart()` until last-known-address resolution settles.
 - **Returning-customer prefill**: `cartStore.fetchLastKnownAddresses()` resolves last-known shipping/billing in priority: (1) most recent completed order, (2) `customer.metadata.physical_cart`, (3) `customer.metadata.digital_cart`.
 - **`/shop/checkout/[cart_id]`**: Item summary with thumbnails (real `<NuxtLink>` back to product page when `product_handle` is present), collapsible ship-to/bill-to review, email input, PayPal Card Fields with auto-init on cart hydration. Route middleware: only reachable from `/shop/shipping`.
@@ -40,9 +43,9 @@ Front-facing website for the Navitag brand. Nuxt 4 + Tailwind + Pinia, with a gl
 - **`/ph`**: Localized homepage with PH coverage map (Globe + Smart partner cards), LTFRB callout in `HomeGuarantee`.
 - **`/ph/data-plans`**: Same `<DataPlansView>` component, `region="ph"` prop swaps hero copy ("Local coverage"), tier taglines (couriers, ride-hail, PUV/logistics), Basic perk to "Globe + Smart 4G LTE / 5G", Business perk to "LTFRB-certified hardware", and routes all CTAs into `/ph/*`. Comparison table splits "Local network" + "International roaming" rows.
 - **`/ph/business`**: PHP fleet pricing (₱650 Starter / ₱600 Growth / Custom Enterprise), Globe + Smart trust marker, Metro Manila + Cebu service tags, PH-specific use cases (Courier, PUV/shuttle, Rental, Logistics).
-- **`/ph/distribution`**: Online stores grid (Shopee, Lazada, Navitag Direct → `/shop/product/track-1`), authorized installation partners (Metro Manila + Cebu, configured as data array), bulk/fleet CTA → `/ph/business`.
+- **`/ph/distribution`**: Online stores grid (Shopee, Lazada, Navitag Shop → `/shop`), authorized installation partners (Metro Manila + Cebu, configured as data array), bulk/fleet CTA → `/ph/business`.
 - **`/ph/contact`**: PH contact form / details.
-- **Header nav**: Where to Buy · Data Plans · For Business. Footer: Shopping (Shopee/Lazada/Volume) + Company. Region label is "Philippines" everywhere (replaced earlier "Southeast Asia" copy).
+- **Header nav**: Where to Buy · Data Plans · For Business. CTA pill in the regional header is intentionally absent (PH `RegionConfig.cta` is unset; `HeaderRegional` guards both desktop and mobile via `v-if="region.cta"`). Footer: Shopping (Shopee/Lazada/Volume) + Company. Region label is "Philippines" everywhere (replaced earlier "Southeast Asia" copy).
 
 ### SEO & Analytics
 - `useSeoMeta()` titles/descriptions/OG on all public pages. Auto-generated sitemap via `@nuxtjs/sitemap`. `robots.txt` blocks internal routes. `noindex` on auth/utility pages.
@@ -71,7 +74,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 - **B2B markers** that route inference already understands: any path matching `/business`, any subject/returnTo matching `business | fleet | enterprise | reseller | distribution | wholesale | bulk` (case-insensitive). Add new B2B keywords to `B2B_RX` in `useAudience.ts`, not to call sites.
 - **Prefer standard events** for the lead-shaped trigger (`Lead`, `Contact`, `CompleteRegistration`) — Meta uses these for ad delivery optimization. The plugin handles the `LeadB2B` / `LeadB2C` parallel custom emission automatically; you don't need to fire it manually.
 - **`content_name`** should be unique per surface (e.g. `business_hero`, `business_bottom_cta`, `data_plans_bottom_cta`) so dashboards filter cleanly. Snake_case.
-- **`content_category`** is a coarse bucket (`b2b_intent`, `b2c_contact`, `fleet_quote`, `plan_intent`, `retailer_outbound`, `marketing`, `plans`, `fleet`, `auth`, `product`, `plan_renewal`, `distribution`, `contact`). Reuse existing buckets before inventing new ones.
+- **`content_category`** is a coarse bucket (`b2b_intent`, `b2c_contact`, `fleet_quote`, `plan_intent`, `retailer_outbound`, `retail_locator`, `marketing`, `plans`, `fleet`, `auth`, `product`, `plan_renewal`, `distribution`, `contact`). Reuse existing buckets before inventing new ones. `retail_locator` is for `FindLocation` clicks on physical-store map links (distinct from `retailer_outbound`, which is for e-commerce marketplace deep links).
 - **`lead_type`** is free-form intent labeling (`business_inquiry`, `fleet_quote`, `business_plan_intent`, `consumer_inquiry`, `consumer_signup`, `business_signup`, `retailer_outbound`, `reseller_inquiry`, `plan_intent`, `business_intent`).
 - **Reserved events that won't fire from `data-pixel-*`**: `PageView`, `ViewContent`, `Purchase`. These must be fired imperatively from script setup so we control timing/params.
 - **Every fire returns an `eventID` (UUID)** — used for future CAPI dedup. Don't strip it.
@@ -100,6 +103,18 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 
 ### TODO
 
+#### 🚨 Next Session — Move PayPal to Production
+
+The frontend is **environment-agnostic except for the client ID** (`runtimeConfig.public.paypalClientId` in `nuxt.config.ts`). End-of-this-session state: rolled back to **sandbox** (`AUm1vZU6...`) for continued local testing. To cut over to live:
+
+1. **Frontend**: set `nuxt.config.ts:27` (or `NUXT_PUBLIC_PAYPAL_CLIENT_ID` env) to the live client ID `AVx8m5QJkqqyF0stlr1EixS43TInHL_0mf-5nhlBaMDwB9PIwAsY8y4CPc_J5a5TXiiDsMAoMKdnpcuC`. SDK URL (`https://www.paypal.com/sdk/js`), currency param (`currency=PHP|USD|...`), and Card Fields config are already live-ready — no other code changes needed.
+2. **Medusa (`shopapi.navitag.com`)**: align `PAYPAL_CLIENT_ID` (matching the live frontend), `PAYPAL_CLIENT_SECRET` (live secret), `PAYPAL_ENVIRONMENT=production`, `PAYPAL_WEBHOOK_ID` (live webhook subscribed to: Payment authorization created/voided, Payment capture completed/denied). Mismatched envs → `/store/paypal/client-token` and `/store/carts/{id}/complete` will fail mid-checkout.
+3. **PayPal merchant account** — Advanced Card Processing currency limits are real and per-merchant-country:
+   - **US-registered merchant** (Navitag Digital Innovations LLC) can only process AUD, CAD, EUR, GBP, JPY, USD via Card Fields. **PHP is NOT supported.** Sandbox happily accepts PHP because sandbox accounts have permissive default capabilities; live underwriting enforces the real list.
+   - Choose one before flipping live: **(A)** price the PH Medusa region in USD (PH customers checkout in USD; conversion fees borne by buyer), **(B)** onboard a Singapore-registered merchant entity (SG accounts can present PHP), **(C)** integrate a PH-local provider (Maya, PayMongo, Stripe-PH) for the PH region.
+   - Verify before cutover: PayPal Developer Dashboard → toggle to "Live" → app → Features/Capabilities → confirm the currencies your live app can process. Cross-reference with the registered merchant business country.
+4. **Risk**: from localhost or any non-prod environment, the live client ID will charge **real money** if a real card is submitted. There is no PayPal "test mode" for live — only sandbox is safe for testing.
+
 #### Storefront
 - [ ] `/top-up/:imei` UX for new SSO signups: `/v1/inventory/check` 404s with no linking path. Decide: redirect to onboarding, block account creation from overlay, or add inline IMEI-linking.
 - [ ] Build reusable ecom components (catalog view, product search) once the storefront expands beyond Track-1.
@@ -110,16 +125,11 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 - [ ] Add hreflang alternates linking `/` ↔ `/ph` on all paired pages (data-plans, business, distribution, contact, home).
 
 #### Content & Assets
-- [x] ~~Drop real cover images at `/public/covers/home-{16x9,4x3,9x16}.jpg` and flip `showPlaceholder = false` in `HomeCover.vue`.~~ Replaced with `HomeBannerCarousel` (remote-hosted banners on `photos.navitag.net`).
 - [ ] Verify Simbase Global+ country list in `HomeCoverage.vue` (~120 countries currently). Reconcile with "100+ countries" copy.
 - [ ] "How it works" explainer page: (1) buy device, (2) buy prepaid plans, (3) subscriptions = enterprise-only.
 - [ ] Backend `POST /v1/user/sync` cache-control: `max-age=172800` (48h) — consider shortening so country changes propagate faster.
-- [x] ~~Meta Pixel — B2C / B2B audience tagging across all events (done; see [`META_EVENTS.md`](./META_EVENTS.md))~~
-- [x] ~~Meta Pixel — frontend CAPI mirror dispatch + Advanced Matching + `_fbp`/`_fbc` capture + `Purchase` `contents[]` enrichment + cart-metadata stuffing for server-side dedup (done; backend implementation spec in [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md))~~
 - [ ] **Backend** — implement the CAPI service at `capi.navitag.app` (dedicated subdomain, accepts `POST /`) and `order.placed` Meta CAPI subscriber on Medusa v2. Spec: [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md). Requires Meta CAPI access token + domain verification.
 - [ ] Meta Pixel — move `AddPaymentInfo` trigger from "card fields rendered" to "first card-field input" so the signal correlates with intent, not infrastructure load.
-- [x] ~~Meta Pixel — `Login` custom event on successful sign-in (audience-tagged) for retention audiences~~ (wired in `/login` and `LoginOverlay`; audience inferred from `?return=` on /login, route-inferred elsewhere)
-<!-- Consent gate intentionally not implemented — see "Known edge cases" above. Do not re-add without explicit owner sign-off. -->
 
 #### SEO
 - [ ] Global `og:image` in `nuxt.config.ts` and `ogImage` on homepage + `/ph` (1200x630 social card at `/og-image.png`).
@@ -169,7 +179,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 | `/ph/business` | Yes | PH fleet pricing (PHP) + service grid |
 | `/ph/distribution` | Yes | Online stores + PH installation partners |
 | `/ph/contact` | Yes | PH contact form |
-| `/distribution` | No | → `/shop` (302) |
+| `/distribution` | No | → `/shop/product/track-1` (301) |
 | `/articles/[...slug]` | Conditional | Strapi articles (per-article `noindex`) |
 | `/privacy-policy` | No | Privacy policy |
 | `/login`, `/signup`, `/forgot-password` | No | Auth pages |
@@ -177,7 +187,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 | `/top-up/:imei` | No | Device top-up plan selection (auth gated) |
 | `/plan-checkout/:cart_id` | No | Data-plan checkout |
 | `/renew-complete/:order_id` | No | Top-up confirmation |
-| `/shop` | No | → `/shop/product/track-1` (302) |
+| `/shop` | No | → `/shop/product/track-1` (301) |
 | `/shop/product/[slug]` | No | Storefront product (auth gated) |
 | `/shop/shipping` | No | Address + shipping (gated by referrer) |
 | `/shop/checkout/[cart_id]` | No | Physical-goods checkout (gated by referrer) |
