@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
+import { MEDUSA_PRODUCTS_PUBLISHABLE_KEY } from '~/variables'
 
 definePageMeta({
   layout: false,
@@ -16,7 +17,7 @@ const PAYPAL_CLIENT_ID = useRuntimeConfig().public.paypalClientId as string
 const route = useRoute()
 const cartId = computed(() => route.params.cart_id as string)
 
-const { medusaFetch } = useMedusa()
+const { medusaFetch } = useMedusa({ publishableKey: MEDUSA_PRODUCTS_PUBLISHABLE_KEY })
 const { auth } = useFirebase()
 const { $fbq } = useNuxtApp()
 

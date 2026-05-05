@@ -15,8 +15,9 @@ async function exchangeToken(auth: Auth): Promise<string> {
   return res.token
 }
 
-export function useMedusa() {
+export function useMedusa(opts: { publishableKey?: string } = {}) {
   const { auth } = useFirebase()
+  const publishableKey = opts.publishableKey ?? MEDUSA_PUBLISHABLE_KEY
 
   async function ensureToken(): Promise<string> {
     if (import.meta.client) {
@@ -42,7 +43,7 @@ export function useMedusa() {
   ): Promise<T> {
     const token = await ensureToken()
     const baseHeaders: Record<string, string> = {
-      'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY,
+      'x-publishable-api-key': publishableKey,
       Authorization: `Bearer ${token}`,
       ...(options.headers as Record<string, string> | undefined),
     }

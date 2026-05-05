@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia'
-import { MEDUSA_BACKEND_URL, MEDUSA_PUBLISHABLE_KEY } from '~/variables'
+import { MEDUSA_BACKEND_URL, MEDUSA_PRODUCTS_PUBLISHABLE_KEY } from '~/variables'
 
 /**
- * Wraps the Medusa storefront cart API. Source of truth for the *currently
- * active* cart in the SPA. The backend pre-creates `digital_cart` and
- * `physical_cart` on login (see storefront API contract) and writes the
- * cart ids to `customer.metadata`. This store reads them from there — it
- * does not mint carts itself in the happy path.
+ * Wraps the Medusa storefront cart API for the shop / physical-goods flow.
+ * All calls use the products-only publishable key, which is bound to the
+ * single public catalog sales channel — required so cart create can resolve
+ * a sales channel unambiguously. Digital flows (top-up, plan-checkout) do
+ * NOT use this store; they call medusaFetch directly with the multi-channel
+ * pk_acd key.
  */
+const SHOP_PUBKEY = MEDUSA_PRODUCTS_PUBLISHABLE_KEY
 
 export type CartKind = 'physical' | 'digital'
 
@@ -62,7 +64,7 @@ export const useCartStore = defineStore('cart', {
       this.loading = true
       this.error = ''
       try {
-        const { medusaFetch } = useMedusa()
+        const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
         const meRes = await medusaFetch<{ customer: any }>('/store/customers/me')
         const meta = meRes.customer?.metadata || {}
         const id = meta[`${kind}_cart`] as string | undefined
@@ -96,7 +98,7 @@ export const useCartStore = defineStore('cart', {
             params: {
               fields: '*items,*items.variant,*items.variant.options,*items.thumbnail,+items.product_handle,*shipping_methods,*shipping_address,*billing_address,+item_subtotal,+shipping_total,+tax_total,+discount_total,+total,+subtotal',
             },
-            headers: { 'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY },
+            headers: { 'x-publishable-api-key': SHOP_PUBKEY },
           },
         )
         this.cart = res.cart
@@ -121,7 +123,7 @@ export const useCartStore = defineStore('cart', {
       this.loading = true
       this.error = ''
       try {
-        const { medusaFetch } = useMedusa()
+        const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
         const basic = useBasicStore()
         const meRes = await medusaFetch<{ customer: any }>('/store/customers/me')
         const customer = meRes.customer
@@ -168,7 +170,7 @@ export const useCartStore = defineStore('cart', {
      */
     async fetchLastKnownAddresses(): Promise<{ shipping: any | null; billing: any | null }> {
       if (!import.meta.client) return { shipping: null, billing: null }
-      const { medusaFetch } = useMedusa()
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
       try {
         const ordersRes = await medusaFetch<{ orders: any[] }>(
           '/store/orders?limit=1&order=-created_at&fields=*shipping_address,*billing_address',
@@ -205,7 +207,7 @@ export const useCartStore = defineStore('cart', {
 
     async addLineItem(variantId: string, quantity = 1, metadata?: Record<string, any>) {
       if (!this.cartId) throw new Error('Cart not initialized.')
-      const { medusaFetch } = useMedusa()
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
       await medusaFetch(`/store/carts/${this.cartId}/line-items`, {
         method: 'POST',
         body: { variant_id: variantId, quantity, ...(metadata ? { metadata } : {}) },
@@ -215,7 +217,7 @@ export const useCartStore = defineStore('cart', {
 
     async updateLineItem(itemId: string, quantity: number) {
       if (!this.cartId) throw new Error('Cart not initialized.')
-      const { medusaFetch } = useMedusa()
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
       await medusaFetch(`/store/carts/${this.cartId}/line-items/${itemId}`, {
         method: 'POST',
         body: { quantity },
@@ -225,7 +227,7 @@ export const useCartStore = defineStore('cart', {
 
     async removeLineItem(itemId: string) {
       if (!this.cartId) throw new Error('Cart not initialized.')
-      const { medusaFetch } = useMedusa()
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
       await medusaFetch(`/store/carts/${this.cartId}/line-items/${itemId}`, { method: 'DELETE' })
       await this.refresh()
     },
@@ -253,7 +255,7 @@ export const useCartStore = defineStore('cart', {
     /** Patch cart fields (region, email, shipping/billing address, metadata, etc.). */
     async updateCart(body: Record<string, any>) {
       if (!this.cartId) throw new Error('Cart not initialized.')
-      const { medusaFetch } = useMedusa()
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
       const res = await medusaFetch<{ cart: MedusaCart }>(`/store/carts/${this.cartId}`, {
         method: 'POST',
         body,
@@ -273,7 +275,7 @@ export const useCartStore = defineStore('cart', {
           `${MEDUSA_BACKEND_URL}/store/shipping-options`,
           {
             params: { cart_id: this.cartId },
-            headers: { 'x-publishable-api-key': MEDUSA_PUBLISHABLE_KEY },
+            headers: { 'x-publishable-api-key': SHOP_PUBKEY },
           },
         )
         this.shippingOptions = res.shipping_options || []
@@ -288,7 +290,7 @@ export const useCartStore = defineStore('cart', {
 
     async setShippingMethod(optionId: string) {
       if (!this.cartId) throw new Error('Cart not initialized.')
-      const { medusaFetch } = useMedusa()
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
       await medusaFetch(`/store/carts/${this.cartId}/shipping-methods`, {
         method: 'POST',
         body: { option_id: optionId },
@@ -298,7 +300,7 @@ export const useCartStore = defineStore('cart', {
 
     async complete(): Promise<{ orderId?: string; cart?: MedusaCart }> {
       if (!this.cartId) throw new Error('Cart not initialized.')
-      const { medusaFetch } = useMedusa()
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
       const res = await medusaFetch<any>(`/store/carts/${this.cartId}/complete`, { method: 'POST' })
       // Medusa returns either { type: 'order', order } or { type: 'cart', cart, error }
       if (res?.type === 'order') return { orderId: res.order?.id }

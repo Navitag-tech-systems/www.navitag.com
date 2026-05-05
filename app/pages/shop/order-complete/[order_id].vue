@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { MEDUSA_PRODUCTS_PUBLISHABLE_KEY } from '~/variables'
 
 definePageMeta({ layout: false })
 
 const route = useRoute()
 const orderId = computed(() => route.params.order_id as string)
 
-const { medusaFetch } = useMedusa()
+const { medusaFetch } = useMedusa({ publishableKey: MEDUSA_PRODUCTS_PUBLISHABLE_KEY })
 
 const order = ref<any>(null)
 const loading = ref(true)
