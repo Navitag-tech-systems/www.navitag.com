@@ -26,6 +26,10 @@ logs
 claude.md
 logspinnet.md
 
+# Local-only working docs / settings (untracked via git rm --cached after add)
+.claude/settings.local.json
+META_EVENTS.md
+
 localapi/
 guides/
 marketing/
