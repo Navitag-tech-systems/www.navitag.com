@@ -24,7 +24,7 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      paypalClientId: 'AUm1vZU6yaAmUOoxlQKA6NO00CHSqdYrRdOPBrvQEa4JkONw-uVAKv9yeifjUnRo-FtMQGiPddFvSQlA',
+      paypalClientId: 'AVx8m5QJkqqyF0stlr1EixS43TInHL_0mf-5nhlBaMDwB9PIwAsY8y4CPc_J5a5TXiiDsMAoMKdnpcuC',
       metaPixelId: '1478826687226054',
       // CAPI mirror endpoint (dedicated subdomain). Browser-side events POST
       // here so the server can forward to Meta with the access token + IP.

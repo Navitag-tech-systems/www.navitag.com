@@ -82,7 +82,7 @@ function loadPayPalSDK(clientToken: string, currency: string): Promise<any> {
       'client-id': PAYPAL_CLIENT_ID,
       components: 'card-fields',
       currency,
-      intent: 'capture',
+      intent: 'authorize',
     }).toString()
     script.setAttribute('data-client-token', clientToken)
     script.onload = () => resolve((window as any).paypal)

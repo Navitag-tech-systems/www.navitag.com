@@ -56,7 +56,7 @@ Front-facing website for the Navitag brand. Nuxt 4 + Tailwind + Pinia, with a gl
 
 ### Meta Tracking — Notes for Future Changes
 
-Read this before adding or moving Meta events. Full event inventory: [`META_EVENTS.md`](./META_EVENTS.md). Backend CAPI spec: [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md).
+Read this before adding or moving Meta events. Full event inventory: [`META_EVENTS.md`](./META_EVENTS.md).
 
 **Architecture**
 
@@ -66,7 +66,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 - **Two ways to fire events**:
   1. **Imperative**: `const { $fbq } = useNuxtApp(); $fbq('Lead', { ... })` — for funnel completions where you have programmatic access to value/items/IDs.
   2. **Declarative (preferred for CTAs)**: tag the element with `data-pixel-*` attributes. The plugin's delegated click listener picks it up. No script changes needed when the element is added.
-- **Server-side `Purchase` dedup**: Before `/cart/complete`, the checkout pages pre-mint a `purchase_event_id` and stuff it into `cart.metadata` along with `_fbp` / `_fbc` / UA / source URL. Medusa's `order.placed` subscriber reads those keys and fires server-side Purchase to Meta with the SAME `event_id`. Browser also fires Purchase with that id → Meta dedupes. See [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md) for the contract.
+- **Server-side `Purchase` dedup contract**: Before `/cart/complete`, the checkout pages pre-mint a `purchase_event_id` and stuff it into `cart.metadata` along with `_fbp` / `_fbc` / UA / source URL so the backend can fire a server-side Purchase with the SAME `event_id`. Browser also fires Purchase with that id → Meta dedupes. The frontend's only job here is populating `cart.metadata` correctly.
 
 **Conventions when adding a new event**
 
@@ -103,18 +103,6 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 
 ### TODO
 
-#### 🚨 Next Session — Move PayPal to Production
-
-The frontend is **environment-agnostic except for the client ID** (`runtimeConfig.public.paypalClientId` in `nuxt.config.ts`). End-of-this-session state: rolled back to **sandbox** (`AUm1vZU6...`) for continued local testing. To cut over to live:
-
-1. **Frontend**: set `nuxt.config.ts:27` (or `NUXT_PUBLIC_PAYPAL_CLIENT_ID` env) to the live client ID `AVx8m5QJkqqyF0stlr1EixS43TInHL_0mf-5nhlBaMDwB9PIwAsY8y4CPc_J5a5TXiiDsMAoMKdnpcuC`. SDK URL (`https://www.paypal.com/sdk/js`), currency param (`currency=PHP|USD|...`), and Card Fields config are already live-ready — no other code changes needed.
-2. **Medusa (`shopapi.navitag.com`)**: align `PAYPAL_CLIENT_ID` (matching the live frontend), `PAYPAL_CLIENT_SECRET` (live secret), `PAYPAL_ENVIRONMENT=production`, `PAYPAL_WEBHOOK_ID` (live webhook subscribed to: Payment authorization created/voided, Payment capture completed/denied). Mismatched envs → `/store/paypal/client-token` and `/store/carts/{id}/complete` will fail mid-checkout.
-3. **PayPal merchant account** — Advanced Card Processing currency limits are real and per-merchant-country:
-   - **US-registered merchant** (Navitag Digital Innovations LLC) can only process AUD, CAD, EUR, GBP, JPY, USD via Card Fields. **PHP is NOT supported.** Sandbox happily accepts PHP because sandbox accounts have permissive default capabilities; live underwriting enforces the real list.
-   - Choose one before flipping live: **(A)** price the PH Medusa region in USD (PH customers checkout in USD; conversion fees borne by buyer), **(B)** onboard a Singapore-registered merchant entity (SG accounts can present PHP), **(C)** integrate a PH-local provider (Maya, PayMongo, Stripe-PH) for the PH region.
-   - Verify before cutover: PayPal Developer Dashboard → toggle to "Live" → app → Features/Capabilities → confirm the currencies your live app can process. Cross-reference with the registered merchant business country.
-4. **Risk**: from localhost or any non-prod environment, the live client ID will charge **real money** if a real card is submitted. There is no PayPal "test mode" for live — only sandbox is safe for testing.
-
 #### Storefront
 - [ ] `/top-up/:imei` UX for new SSO signups: `/v1/inventory/check` 404s with no linking path. Decide: redirect to onboarding, block account creation from overlay, or add inline IMEI-linking.
 - [ ] Build reusable ecom components (catalog view, product search) once the storefront expands beyond Track-1.
@@ -127,8 +115,6 @@ The frontend is **environment-agnostic except for the client ID** (`runtimeConfi
 #### Content & Assets
 - [ ] Verify Simbase Global+ country list in `HomeCoverage.vue` (~120 countries currently). Reconcile with "100+ countries" copy.
 - [ ] "How it works" explainer page: (1) buy device, (2) buy prepaid plans, (3) subscriptions = enterprise-only.
-- [ ] Backend `POST /v1/user/sync` cache-control: `max-age=172800` (48h) — consider shortening so country changes propagate faster.
-- [ ] **Backend** — implement the CAPI service at `capi.navitag.app` (dedicated subdomain, accepts `POST /`) and `order.placed` Meta CAPI subscriber on Medusa v2. Spec: [`BACKEND_META_CAPI.md`](./BACKEND_META_CAPI.md). Requires Meta CAPI access token + domain verification.
 - [ ] Meta Pixel — move `AddPaymentInfo` trigger from "card fields rendered" to "first card-field input" so the signal correlates with intent, not infrastructure load.
 
 #### SEO
