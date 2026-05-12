@@ -206,7 +206,10 @@ export const useBasicStore = defineStore('basic', {
       if (!routeExists(target)) return
 
       this.redirectedFrom = route.path
-      router.replace(target)
+      // Preserve query (utm_*, fbclid, gclid, …) and hash across the
+      // regional redirect — a bare path string would drop them, breaking
+      // ad attribution and the Meta pixel's _fbc cookie capture.
+      router.replace({ path: target, query: route.query, hash: route.hash })
     },
   },
 })

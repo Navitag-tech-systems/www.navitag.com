@@ -91,13 +91,45 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   const fbq = (window as any).fbq
   fbq('init', PIXEL_ID)
-  fbq('track', 'PageView', {}, { eventID: newEventId() })
+
+  // Run `cb` once fbevents.js has executed — at which point it has written
+  // the `_fbp` (and, if `?fbclid=` is present, `_fbc`) cookies that the CAPI
+  // mirror needs for matching. We key off the script's `load` event rather
+  // than a timeout: `fbq.callMethod` only exists after the real library runs,
+  // so if it's already there we're ready; otherwise wait for `load` (and
+  // treat `error` / a missing tag as "ready" so a blocked pixel still mirrors
+  // — event_id dedup works even without the cookies).
+  function whenPixelReady(cb: () => void): void {
+    if (typeof fbq?.callMethod === 'function') { cb(); return }
+    const tag = document.querySelector<HTMLScriptElement>('script[src*="fbevents.js"]')
+    if (!tag) { cb(); return }
+    tag.addEventListener('load', cb, { once: true })
+    tag.addEventListener('error', cb, { once: true })
+  }
+
+  // Boot PageView — mirror to CAPI with the SAME event_id so the two halves
+  // dedupe. Without a server-side counterpart for the first PageView of every
+  // session, Events Manager reports a low "events covered by Conversions API"
+  // rate, which Meta correlates with a higher cost per result. Defer the
+  // mirror until the pixel library has set its cookies (see above).
+  const bootPageViewId = newEventId()
+  fbq('track', 'PageView', {}, { eventID: bootPageViewId })
+  whenPixelReady(() => { void mirrorToCapi('PageView', {}, bootPageViewId) })
 
   const router = useRouter()
-  router.afterEach(() => {
+  // In Nuxt the router isn't "ready" when client plugins run, so afterEach
+  // also fires once for the initial navigation — already covered by the boot
+  // PageView above. Swallow that single duplicate; every later SPA navigation
+  // gets a fresh browser + CAPI PageView pair sharing one event_id.
+  const bootFullPath = router.currentRoute.value.fullPath
+  let swallowedBoot = false
+  router.afterEach((to) => {
+    if (!swallowedBoot && to.fullPath === bootFullPath) {
+      swallowedBoot = true
+      return
+    }
     const eid = newEventId()
     ;(window as any).fbq?.('track', 'PageView', {}, { eventID: eid })
-    // Mirror PageView too — gives the server a canonical session timeline.
     void mirrorToCapi('PageView', {}, eid)
   })
 

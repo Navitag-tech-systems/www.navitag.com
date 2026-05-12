@@ -37,6 +37,15 @@ const signupAudience = computed(() => inferAudience({
   returnTo: returnTo.value,
 }))
 
+// Post-auth destination, carrying marketing query params (utm_*, fbclid, …)
+// forward — but dropping the internal routing params so they don't dangle.
+function postAuthTarget() {
+  const query = { ...route.query }
+  delete query.return
+  delete query.intent
+  return { path: returnTo.value, query }
+}
+
 if (import.meta.client) {
   onMounted(() => {
     $fbq('ViewContent', {
@@ -116,7 +125,7 @@ async function signupWithEmail() {
       audience: signupAudience.value,
       lead_type: signupAudience.value === 'b2b' ? 'business_signup' : 'consumer_signup',
     })
-    navigateTo(returnTo.value)
+    navigateTo(postAuthTarget())
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Sign up failed'
   } finally {
@@ -142,7 +151,7 @@ async function signupWithGoogle() {
       audience: signupAudience.value,
       lead_type: signupAudience.value === 'b2b' ? 'business_signup' : 'consumer_signup',
     })
-    navigateTo(returnTo.value)
+    navigateTo(postAuthTarget())
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google sign up failed'
   } finally {
@@ -178,7 +187,7 @@ async function signupWithApple() {
       audience: signupAudience.value,
       lead_type: signupAudience.value === 'b2b' ? 'business_signup' : 'consumer_signup',
     })
-    navigateTo(returnTo.value)
+    navigateTo(postAuthTarget())
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Apple sign up failed'
   } finally {

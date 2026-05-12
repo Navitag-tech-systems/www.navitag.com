@@ -69,7 +69,8 @@ async function loginWithEmail() {
       backendSync(cred.user),
     ])
     fireLogin('email')
-    navigateTo('/')
+    // Preserve query (utm_*, fbclid, …) so attribution survives the auth hop.
+    navigateTo({ path: '/', query: route.query })
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Login failed'
   } finally {
@@ -87,7 +88,8 @@ async function loginWithGoogle() {
       backendSync(cred.user),
     ])
     fireLogin('google')
-    navigateTo('/')
+    // Preserve query (utm_*, fbclid, …) so attribution survives the auth hop.
+    navigateTo({ path: '/', query: route.query })
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Google login failed'
   } finally {
@@ -115,7 +117,8 @@ async function loginWithApple() {
       backendSync(cred.user),
     ])
     fireLogin('apple')
-    navigateTo('/')
+    // Preserve query (utm_*, fbclid, …) so attribution survives the auth hop.
+    navigateTo({ path: '/', query: route.query })
   } catch (e: any) {
     error.value = e?.message?.replace('Firebase: ', '') || 'Apple login failed'
   } finally {
