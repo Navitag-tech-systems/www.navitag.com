@@ -189,7 +189,7 @@ const useCases: UseCase[] = [
             Fleet tracking <span class="text-navitag-blue">above the rest</span>. Global innovation and telematics expertise.
           </h1>
           <p class="mt-6 text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed">
-            PHP pricing, on-site installation across Metro Manila and Cebu, 24/7 support, and LTFRB-certified hardware — built for Philippine operators of any size.
+            On-site installation across Metro Manila and Cebu, 24/7 support, and LTFRB-certified hardware. Localized for the Philippine landscape.
           </p>
           <div class="mt-8 flex flex-col sm:flex-row gap-3">
             <NuxtLink
@@ -204,12 +204,6 @@ const useCases: UseCase[] = [
               Talk to our team
               <i class="fas fa-arrow-right text-[11px]"></i>
             </NuxtLink>
-            <a
-              href="#fleet-pricing"
-              class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white border border-gray-200 text-gray-950 text-sm font-semibold hover:border-gray-300 transition"
-            >
-              See fleet pricing
-            </a>
           </div>
 
           <!-- Trust markers -->

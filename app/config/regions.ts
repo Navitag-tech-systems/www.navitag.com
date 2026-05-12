@@ -30,6 +30,20 @@ export interface RegionFooterGroup {
   links: RegionFooterLink[]
 }
 
+/** A single region-local contact channel surfaced on the contact page. */
+export interface RegionContactChannel {
+  /** Font Awesome icon class without the style prefix, e.g. 'fa-envelope'. */
+  icon: string
+  /** FA style prefix — 'fas' (solid, default) or 'fab' for brand glyphs (Viber, WhatsApp, …). */
+  iconStyle?: string
+  /** Short eyebrow label, e.g. 'Philippines sales', 'Viber', 'WhatsApp'. */
+  label: string
+  /** Displayed value, e.g. an email address or phone number. */
+  value: string
+  /** Optional link target — 'mailto:…', 'tel:…', 'https://wa.me/…', 'viber://…'. */
+  href?: string
+}
+
 export interface RegionConfig {
   code: string
   /** Human-readable name used by the region banner / switcher. */
@@ -49,6 +63,8 @@ export interface RegionConfig {
   countries: string[]
   navLinks: RegionNavLink[]
   cta?: { label: string, href: string }
+  /** Region-local contact channels surfaced on the contact page (order preserved). */
+  contact?: RegionContactChannel[]
   footerGroups: RegionFooterGroup[]
 }
 
@@ -89,6 +105,20 @@ export const REGIONS: Record<string, RegionConfig> = {
     globalLinkTo: '/',
     medusaRegionId: getRegionIdForCountry('PH'),
     countries: ['PH'],
+    contact: [
+      {
+        icon: 'fa-envelope',
+        label: 'Philippines sales',
+        value: 'phsales@navitag.com',
+        href: 'mailto:phsales@navitag.com',
+      },
+      {
+        icon: 'fa-viber',
+        iconStyle: 'fab',
+        label: 'Viber',
+        value: '0917 638 8402',
+      },
+    ],
     navLinks: [
       { label: 'Where to Buy', to: '/ph/distribution' },
       { label: 'Data Plans', to: '/ph/data-plans' },

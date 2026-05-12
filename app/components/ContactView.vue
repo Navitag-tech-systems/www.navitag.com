@@ -3,8 +3,12 @@ import type { RegionConfig } from '~/config/regions'
 
 interface InfoCard {
   icon: string
+  /** Font Awesome style prefix — 'fas' (solid) by default, 'fab' for brand glyphs. */
+  iconStyle?: string
   label: string
   text: string
+  /** When set, the card renders as a link (e.g. mailto:). */
+  href?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -46,14 +50,24 @@ const defaultSubheading = computed(() => {
 const defaultInfoCards = computed<InfoCard[]>(() => {
   if (props.infoCards?.length) return props.infoCards
 
-  // Regional mode: lead with the regional entity, then Global HQ as fallback.
+  // Regional mode: lead with the regional entity, then whatever contact
+  // channels that region defines (email, Viber, WhatsApp, hotline, …),
+  // then Global HQ + response time as fallback.
   if (props.region) {
+    const channelCards: InfoCard[] = (props.region.contact ?? []).map(c => ({
+      icon: c.icon,
+      iconStyle: c.iconStyle,
+      label: c.label,
+      text: c.value,
+      href: c.href,
+    }))
     return [
       {
         icon: 'fa-earth-asia',
         label: props.region.regionShort,
         text: props.region.entity,
       },
+      ...channelCards,
       {
         icon: 'fa-building',
         label: 'Global HQ',
@@ -128,23 +142,26 @@ const defaultInfoCards = computed<InfoCard[]>(() => {
 
       <!-- Info cards — below the form -->
       <div class="mt-14 sm:mt-20 grid gap-5 sm:grid-cols-3">
-        <div
+        <component
+          :is="card.href ? 'a' : 'div'"
           v-for="card in defaultInfoCards"
           :key="card.label"
+          :href="card.href"
           class="flex items-start gap-4 p-5 rounded-2xl bg-white/70 border border-gray-200/70"
+          :class="card.href ? 'transition hover:bg-white hover:border-navitag-blue/30' : ''"
         >
           <div class="shrink-0 w-11 h-11 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-navitag-blue">
-            <i class="fas text-[14px]" :class="card.icon"></i>
+            <i class="text-[14px]" :class="[card.iconStyle || 'fas', card.icon]"></i>
           </div>
           <div>
             <div class="text-[11px] uppercase tracking-[0.18em] font-semibold text-gray-500">
               {{ card.label }}
             </div>
-            <div class="mt-0.5 text-[13.5px] text-gray-800 leading-relaxed">
+            <div class="mt-0.5 text-[13.5px] leading-relaxed" :class="card.href ? 'text-navitag-blue' : 'text-gray-800'">
               {{ card.text }}
             </div>
           </div>
-        </div>
+        </component>
       </div>
     </div>
   </section>
