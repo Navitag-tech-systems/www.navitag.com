@@ -131,7 +131,7 @@ const includedFeatures: IncludedFeature[] = [
   { icon: 'fa-stopwatch', label: '10-second location updates' },
   { icon: 'fa-clock-rotate-left', label: '6 months of history playback' },
   { icon: 'fa-draw-polygon', label: 'Unlimited geofences' },
-  { icon: 'fa-bell', label: 'Webhooks · email · app alerts' },
+  { icon: 'fa-bell', label: 'Webhooks · app alerts' },
   { icon: 'fa-tower-broadcast', label: 'Globe + Smart 4G LTE / 5G' },
   { icon: 'fa-file-export', label: 'CSV data exports' },
 ]
@@ -186,7 +186,7 @@ const useCases: UseCase[] = [
             Navitag Business · Philippines
           </div>
           <h1 class="mt-5 text-4xl sm:text-5xl lg:text-[64px] font-semibold tracking-tight leading-[1.02] text-gray-950">
-            Local fleet tracking that <span class="text-navitag-blue">pays back</span> every day.
+            Fleet tracking <span class="text-navitag-blue">above the rest</span>. Global innovation and telematics expertise.
           </h1>
           <p class="mt-6 text-base sm:text-lg text-gray-600 max-w-xl leading-relaxed">
             PHP pricing, on-site installation across Metro Manila and Cebu, 24/7 support, and LTFRB-certified hardware — built for Philippine operators of any size.
@@ -294,7 +294,7 @@ const useCases: UseCase[] = [
           Built for PH operators
         </div>
         <h2 class="mt-5 text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight leading-tight text-gray-950">
-          From single van to <span class="text-gray-400">province-wide fleet.</span>
+          From single van to <span class="text-gray-400">Nation Wide Operations.</span>
         </h2>
         <p class="mt-4 text-[15px] text-gray-600 leading-relaxed max-w-2xl">
           Tested across the operating realities of Philippine fleets — heavy traffic, remote routes, multi-island logistics, and regulatory compliance.
@@ -631,7 +631,7 @@ const useCases: UseCase[] = [
               Ready when you are
             </div>
             <h3 class="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight leading-tight">
-              Let's scope your fleet. <br class="hidden sm:block">We'll send a tailored PHP quote within one business day.
+              Let's scope your fleet. <br class="hidden sm:block">We'll send you a personalized quote for your business needs.
             </h3>
           </div>
           <NuxtLink
