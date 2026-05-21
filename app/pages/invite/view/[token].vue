@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MEDUSA_BACKEND_URL } from '~/variables'
+import { UNIFIED_API_URL } from '~/variables'
 
 useHead({
   title: 'Navitag - Invite',
@@ -22,7 +22,9 @@ type ClaimResult = {
   broker_synced: boolean
 }
 
-const SHARE_BASE = MEDUSA_BACKEND_URL
+// Share endpoints live on the unified API (api.navitag.net/v1), not Medusa.
+// UNIFIED_API_URL already includes the /v1 segment.
+const SHARE_BASE = UNIFIED_API_URL
 
 const SCOPE_LABELS: Record<string, string> = {
   'position:live': 'Live location',
@@ -93,7 +95,7 @@ async function loadMeta() {
   metaError.value = ''
   try {
     invite.value = await $fetch<InviteMeta>(
-      `${SHARE_BASE}/v1/share/invite/${encodeURIComponent(token.value)}`,
+      `${SHARE_BASE}/share/invite/${encodeURIComponent(token.value)}`,
     )
     if (import.meta.client && invite.value) {
       $fbq('ViewContent', {
@@ -125,7 +127,7 @@ async function claim() {
   claimRetryable.value = false
   try {
     const idToken = await user.value.getIdToken()
-    claimResult.value = await $fetch<ClaimResult>(`${SHARE_BASE}/v1/share/claim`, {
+    claimResult.value = await $fetch<ClaimResult>(`${SHARE_BASE}/share/claim`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${idToken}` },
       body: { token: token.value },
