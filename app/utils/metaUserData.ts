@@ -105,6 +105,40 @@ export async function hashIdentity(input: {
   return out
 }
 
+const EXT_ID_KEY = 'navitag_ext_id'
+let memoExtId: string | null = null
+
+function newId(): string {
+  return (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    ? crypto.randomUUID()
+    : `ext-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+/**
+ * Stable anonymous identifier for this browser, used as Meta `external_id` so
+ * anonymous traffic (the bulk of events) carries an ID for matching — the same
+ * value is sent from both the browser pixel's Advanced Matching and the CAPI
+ * mirror so the two halves dedupe. Persisted in localStorage to survive across
+ * sessions; logged-in events prefer the Firebase UID instead. Lifts External ID
+ * match coverage.
+ */
+export function getAnonymousExternalId(): string {
+  if (memoExtId) return memoExtId
+  try {
+    const existing = localStorage.getItem(EXT_ID_KEY)
+    if (existing) { memoExtId = existing; return existing }
+    memoExtId = newId()
+    localStorage.setItem(EXT_ID_KEY, memoExtId)
+    return memoExtId
+  }
+  catch {
+    // localStorage blocked (private mode / partitioning) — fall back to an
+    // id that stays stable for the life of this page session.
+    if (!memoExtId) memoExtId = newId()
+    return memoExtId
+  }
+}
+
 /** Read a single cookie value by name. */
 function readCookie(name: string): string | null {
   if (typeof document === 'undefined') return null

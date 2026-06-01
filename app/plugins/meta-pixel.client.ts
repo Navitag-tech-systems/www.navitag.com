@@ -29,6 +29,7 @@ import { inferAudience, type Audience } from '~/composables/useAudience'
 import {
   buildCapiUserData,
   ensureFbp,
+  getAnonymousExternalId,
   hashIdentity,
   type CapiUserData,
   type HashedUserData,
@@ -166,7 +167,9 @@ export default defineNuxtPlugin((nuxtApp) => {
       // them here when the backend starts surfacing them.
       const hashed = await hashIdentity({
         email: user?.email,
-        externalId: user?.uid,
+        // Real UID when authed, else a stable anonymous browser id, so every
+        // visitor carries an external_id (not just logged-in ones).
+        externalId: user?.uid || getAnonymousExternalId(),
         countryCode: country,
       })
       cachedAdvancedMatching = hashed
@@ -206,12 +209,12 @@ export default defineNuxtPlugin((nuxtApp) => {
             const basic = useBasicStore()
             return {
               email: basic.user?.email,
-              externalId: basic.user?.uid,
+              externalId: basic.user?.uid || getAnonymousExternalId(),
               countryCode: basic.country,
             }
           }
           catch {
-            return {}
+            return { externalId: getAnonymousExternalId() }
           }
         })(),
       })
