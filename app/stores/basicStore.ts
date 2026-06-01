@@ -8,10 +8,10 @@ import {
   getCountryNameForCode,
   getRegionIdForCountry,
 } from '~/utils/countryData'
+import { fetchCountryFromIp } from '~/utils/ipCountry'
 
 const MEDUSA_JWT_KEY = 'medusa_jwt'
 const AUTH_WAIT_MS = 4000
-const IP_TIMEOUT_MS = 3500
 
 function isValidCc(cc: unknown): cc is string {
   return typeof cc === 'string' && /^[A-Z]{2}$/.test(cc.toUpperCase())
@@ -213,19 +213,3 @@ export const useBasicStore = defineStore('basic', {
     },
   },
 })
-
-// ─── Helpers local to this module ───────────────────────────────────────
-
-async function fetchCountryFromIp(): Promise<string | null> {
-  try {
-    const res = await fetch('https://api.country.is/', {
-      signal: AbortSignal.timeout(IP_TIMEOUT_MS),
-      cache: 'no-store',
-    })
-    if (!res.ok) return null
-    const data = (await res.json()) as { country?: string }
-    if (isValidCc(data.country)) return data.country!.toUpperCase()
-  }
-  catch { /* ignore */ }
-  return null
-}

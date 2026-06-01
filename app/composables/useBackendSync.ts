@@ -1,22 +1,18 @@
 import { UNIFIED_API_URL } from '~/variables'
+import { fetchCountryFromIp } from '~/utils/ipCountry'
 
 let countryCodeCache: string | null = null
 
 async function fetchCountryCode(): Promise<string | null> {
   if (countryCodeCache) return countryCodeCache
 
-  try {
-    const data = await $fetch<{ country_code: string }>('https://api.ipinfo.io/lite/me?token=f1b39e92820d53', {
-      timeout: 5000,
-      retry: 2,
-      retryDelay: 500,
-    })
-    countryCodeCache = data.country_code || null
-    return countryCodeCache
-  } catch (e) {
-    console.error('[BackendSync] Failed to detect country code after retries:', e)
-    return null
+  // Cloudflare trace, kept resilient for the signup / backend-sync flow:
+  // 5s timeout × 3 attempts, 500ms backoff.
+  countryCodeCache = await fetchCountryFromIp({ timeoutMs: 5000, retries: 2, retryDelayMs: 500 })
+  if (!countryCodeCache) {
+    console.error('[BackendSync] Failed to detect country code after retries')
   }
+  return countryCodeCache
 }
 
 export function useBackendSync() {
