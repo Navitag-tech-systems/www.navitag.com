@@ -113,6 +113,28 @@ function readCookie(name: string): string | null {
 }
 
 /**
+ * Ensure a `_fbp` (Browser ID) cookie exists and return it. fbevents.js adopts
+ * a pre-existing `_fbp` instead of minting its own, so seeding this *before*
+ * `fbq('init')` makes the browser pixel and the CAPI mirror share one ID and
+ * lifts fbp match coverage — CAPI events that fire before fbevents.js writes
+ * the cookie would otherwise carry no Browser ID. Format per Meta:
+ * `fb.<subdomainIndex>.<creationMs>.<random>`.
+ */
+export function ensureFbp(): string | null {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return null
+  let fbp = readCookie('_fbp')
+  if (!fbp) {
+    fbp = `fb.1.${Date.now()}.${Math.floor(Math.random() * 1e10)}`
+    // Match fbevents.js, which sets _fbp on the registrable domain so it's
+    // shared across www/apex. Off-domain (e.g. localhost) falls back host-only.
+    const host = window.location.hostname
+    const domainAttr = host.endsWith('navitag.com') ? '; domain=.navitag.com' : ''
+    document.cookie = `_fbp=${fbp}; max-age=7776000; path=/${domainAttr}; SameSite=Lax`
+  }
+  return fbp
+}
+
+/**
  * Read `_fbp` / `_fbc` Meta cookies. `_fbp` is set by fbevents.js on first
  * pixel boot. `_fbc` is set by fbevents.js when the URL carries `?fbclid=`.
  * If `_fbc` is missing but `?fbclid=` is in the current URL, synthesize one

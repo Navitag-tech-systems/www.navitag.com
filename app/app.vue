@@ -5,7 +5,15 @@ import { useBasicStore } from '~/stores/basicStore'
 const basic = useBasicStore()
 basic.initAuth()
 
-onMounted(() => { basic.runFirstEntryRedirect() })
+const { $logBootPageView } = useNuxtApp()
+
+// Run the first-entry country redirect, then emit the boot page_view for the
+// settled route. Awaiting the redirect means a redirected landing is counted
+// once (for the destination) instead of also logging the transient path.
+onMounted(async () => {
+  await basic.runFirstEntryRedirect()
+  $logBootPageView()
+})
 
 useHead({
   script: [{

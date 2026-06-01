@@ -209,7 +209,8 @@ export const useBasicStore = defineStore('basic', {
       // Preserve query (utm_*, fbclid, gclid, …) and hash across the
       // regional redirect — a bare path string would drop them, breaking
       // ad attribution and the Meta pixel's _fbc cookie capture.
-      router.replace({ path: target, query: route.query, hash: route.hash })
+      // Awaited so callers (e.g. the boot page_view) see the settled route.
+      await router.replace({ path: target, query: route.query, hash: route.hash })
     },
   },
 })

@@ -28,6 +28,7 @@
 import { inferAudience, type Audience } from '~/composables/useAudience'
 import {
   buildCapiUserData,
+  ensureFbp,
   hashIdentity,
   type CapiUserData,
   type HashedUserData,
@@ -90,6 +91,10 @@ export default defineNuxtPlugin((nuxtApp) => {
   })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js')
 
   const fbq = (window as any).fbq
+  // Seed _fbp before init so the browser pixel adopts it and every CAPI mirror
+  // (including events firing before fbevents.js writes the cookie) carries the
+  // same Browser ID. Lifts fbp match coverage.
+  ensureFbp()
   fbq('init', PIXEL_ID)
 
   // Run `cb` once fbevents.js has executed — at which point it has written
@@ -114,7 +119,15 @@ export default defineNuxtPlugin((nuxtApp) => {
   // mirror until the pixel library has set its cookies (see above).
   const bootPageViewId = newEventId()
   fbq('track', 'PageView', {}, { eventID: bootPageViewId })
-  whenPixelReady(() => { void mirrorToCapi('PageView', {}, bootPageViewId) })
+  whenPixelReady(async () => {
+    // Let country resolve first so the boot PageView's CAPI mirror carries it
+    // (raises Country match coverage). resolveCountry shares one in-flight
+    // request, so this adds no extra fetch; the app already shows the boot
+    // loader during this window. keepalive on the mirror covers a fast bounce.
+    try { await useBasicStore().resolveCountry() }
+    catch { /* ignore — mirror anyway */ }
+    void mirrorToCapi('PageView', {}, bootPageViewId)
+  })
 
   const router = useRouter()
   // In Nuxt the router isn't "ready" when client plugins run, so afterEach
@@ -145,19 +158,16 @@ export default defineNuxtPlugin((nuxtApp) => {
       const user = basic.user
       const country = basic.country || null
 
-      if (!user) {
-        // Logged out — clear AM by re-init with no params.
-        cachedAdvancedMatching = {}
-        ;(window as any).fbq?.('init', PIXEL_ID)
-        return
-      }
-
+      // Country is non-identifying, so attach it for everyone — anonymous
+      // visitors are the bulk of traffic and previously carried no Advanced
+      // Matching at all, tanking Country match coverage. Authed users also
+      // get em / external_id.
+      // Phone / first / last names are not collected at signup today; plumb
+      // them here when the backend starts surfacing them.
       const hashed = await hashIdentity({
-        email: user.email,
-        externalId: user.uid,
+        email: user?.email,
+        externalId: user?.uid,
         countryCode: country,
-        // Phone / first / last names are not collected at signup today.
-        // Plumb them here when the backend starts surfacing them.
       })
       cachedAdvancedMatching = hashed
       ;(window as any).fbq?.('init', PIXEL_ID, hashed)
