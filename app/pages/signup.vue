@@ -116,6 +116,7 @@ async function signupWithEmail() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, fullName.value || null, selectedCountry.value),
     ])
+    await $fbq.identify({ email: cred.user?.email || email.value || null })
     $fbq('CompleteRegistration', {
       status: true,
       content_name: 'email_signup',
@@ -142,6 +143,7 @@ async function signupWithGoogle() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, null, selectedCountry.value),
     ])
+    await $fbq.identify({ email: cred.user?.email || null })
     $fbq('CompleteRegistration', {
       status: true,
       content_name: 'google_signup',
@@ -178,6 +180,7 @@ async function signupWithApple() {
       exchangeMedusaToken(cred.user),
       backendSync(cred.user, null, selectedCountry.value),
     ])
+    await $fbq.identify({ email: cred.user?.email || null })
     $fbq('CompleteRegistration', {
       status: true,
       content_name: 'apple_signup',

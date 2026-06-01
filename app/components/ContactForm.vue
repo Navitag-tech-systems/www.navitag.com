@@ -78,6 +78,9 @@ async function submit() {
     }
     status.value = 'success'
     const audience = inferAudience({ subject: props.subject })
+    // Feed the submitted email into Meta user_data (hashed) so the Lead event
+    // carries `em` even for anonymous submitters — lifts Email match coverage.
+    await $fbq.identify({ email: payload.email })
     $fbq('Lead', {
       content_name: props.subject || 'contact_form',
       content_category: audience === 'b2b' ? 'b2b_contact' : 'b2c_contact',

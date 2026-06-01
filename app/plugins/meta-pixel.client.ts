@@ -47,6 +47,13 @@ export interface FbqHelper {
    * with matching dedup.
    */
   mirror: (event: string, params: Record<string, any>, eventId: string) => Promise<void>
+  /**
+   * Capture identity (e.g. email from a contact / signup form) so subsequent
+   * events — including from anonymous submitters — carry a hashed `em` in both
+   * browser Advanced Matching and the CAPI mirror. Resolves once AM is updated,
+   * so callers can `await` it before firing Lead / CompleteRegistration.
+   */
+  identify: (identity: { email?: string | null, phone?: string | null, firstName?: string | null, lastName?: string | null }) => Promise<void>
 }
 
 function newEventId(): string {
@@ -147,31 +154,49 @@ export default defineNuxtPlugin((nuxtApp) => {
     void mirrorToCapi('PageView', {}, eid)
   })
 
-  // ─── Advanced Matching: re-init when auth resolves ───────────────────
+  // ─── Advanced Matching: re-init when auth / identity resolves ────────
   // Cached AM payload so subsequent events from the browser pixel carry
   // identity. Also reused as the hashed user_data baseline when mirroring
   // events to CAPI (each event's mirror call merges in fresh _fbp/_fbc/UA).
   let cachedAdvancedMatching: HashedUserData = {}
 
-  async function pushAdvancedMatching() {
+  // Identity captured from a form submission (contact / signup) so events from
+  // anonymous submitters still carry a hashable email. In-memory only — lives
+  // for the SPA session, never written to storage.
+  let manualIdentity: {
+    email?: string | null
+    phone?: string | null
+    firstName?: string | null
+    lastName?: string | null
+  } = {}
+
+  // Single source of truth for who this visitor is, merged from the auth store
+  // and any form-captured identity. Authed values win; everyone gets country
+  // and a stable external_id. Country is non-identifying, so it's attached for
+  // anonymous visitors too (the bulk of traffic) — without this, Advanced
+  // Matching was empty for them and Country / External ID coverage tanked.
+  function resolveIdentity() {
+    let user: { email?: string | null, uid?: string } | null = null
+    let country: string | null = null
     try {
       const basic = useBasicStore()
-      const user = basic.user
-      const country = basic.country || null
+      user = basic.user
+      country = basic.country || null
+    }
+    catch { /* store not ready yet */ }
+    return {
+      email: user?.email || manualIdentity.email || null,
+      phone: manualIdentity.phone || null,
+      firstName: manualIdentity.firstName || null,
+      lastName: manualIdentity.lastName || null,
+      externalId: user?.uid || getAnonymousExternalId(),
+      countryCode: country,
+    }
+  }
 
-      // Country is non-identifying, so attach it for everyone — anonymous
-      // visitors are the bulk of traffic and previously carried no Advanced
-      // Matching at all, tanking Country match coverage. Authed users also
-      // get em / external_id.
-      // Phone / first / last names are not collected at signup today; plumb
-      // them here when the backend starts surfacing them.
-      const hashed = await hashIdentity({
-        email: user?.email,
-        // Real UID when authed, else a stable anonymous browser id, so every
-        // visitor carries an external_id (not just logged-in ones).
-        externalId: user?.uid || getAnonymousExternalId(),
-        countryCode: country,
-      })
+  async function pushAdvancedMatching() {
+    try {
+      const hashed = await hashIdentity(resolveIdentity())
       cachedAdvancedMatching = hashed
       ;(window as any).fbq?.('init', PIXEL_ID, hashed)
     }
@@ -179,6 +204,22 @@ export default defineNuxtPlugin((nuxtApp) => {
       // AM is best-effort — never break the pixel if hashing fails.
       console.warn('[meta-pixel] pushAdvancedMatching failed', e)
     }
+  }
+
+  // Capture form-supplied identity and refresh AM so the about-to-fire event
+  // (and all later ones) carry a hashed em. Awaitable so callers can ensure
+  // the browser pixel has it before firing Lead / CompleteRegistration; the
+  // CAPI mirror picks it up regardless via resolveIdentity().
+  async function identify(identity: {
+    email?: string | null
+    phone?: string | null
+    firstName?: string | null
+    lastName?: string | null
+  }): Promise<void> {
+    for (const [k, v] of Object.entries(identity)) {
+      if (v) (manualIdentity as Record<string, string>)[k] = v as string
+    }
+    await pushAdvancedMatching()
   }
 
   // Watch the auth store. We delay the first push until after the plugin
@@ -201,23 +242,9 @@ export default defineNuxtPlugin((nuxtApp) => {
   ): Promise<void> {
     if (!CAPI_ENDPOINT) return
     try {
-      const userData: CapiUserData = await buildCapiUserData({
-        // Re-fetch live identity at fire time so the hashed payload is
-        // current even if the user just logged in seconds ago.
-        ...(() => {
-          try {
-            const basic = useBasicStore()
-            return {
-              email: basic.user?.email,
-              externalId: basic.user?.uid || getAnonymousExternalId(),
-              countryCode: basic.country,
-            }
-          }
-          catch {
-            return { externalId: getAnonymousExternalId() }
-          }
-        })(),
-      })
+      // Resolve identity at fire time so the hashed payload is current even if
+      // the user just logged in or submitted a form seconds ago.
+      const userData: CapiUserData = await buildCapiUserData(resolveIdentity())
 
       const payload = {
         event_id: eventId,
@@ -365,6 +392,7 @@ export default defineNuxtPlugin((nuxtApp) => {
   const helper = track as FbqHelper
   helper.custom = trackCustom
   helper.mirror = mirror
+  helper.identify = identify
 
   return {
     provide: {
