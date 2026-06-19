@@ -24,6 +24,17 @@ const chatBubbleClosed = ref(false)
 let cancelled = false
 let observer: IntersectionObserver | null = null
 
+function scrollToAntipain(e: Event) {
+  // Smooth-scroll to the section instead of an instant hash jump. The pixel
+  // ProductCTAClick still fires via the plugin's delegated document listener
+  // (preventDefault doesn't stop propagation). Honor reduced-motion.
+  const el = document.getElementById('antipain')
+  if (!el) return
+  e.preventDefault()
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+}
+
 function closeChatBubble() {
   chatBubbleClosed.value = true
   try {
@@ -37,6 +48,8 @@ onMounted(() => {
   $fbq?.('ViewContent', {
     content_name: 'product_track1_ph',
     content_category: 'product',
+    content_ids: ['track-1'],
+    content_type: 'product',
     audience: 'b2c',
   })
 
@@ -114,11 +127,21 @@ onBeforeUnmount(() => {
             data-pixel-event="Custom"
             data-pixel-custom-name="ProductCTAClick"
             data-pixel-audience="b2c"
+            data-pixel-content-category="product"
             data-pixel-content-name="track1_ph_hero_mobile"
           >
             <span style="color:white; text-decoration:none;">Buy Now</span>
           </NuxtLink>
-          <a href="#antipain" class="learnBtn"><span style="color:white;">Learn More</span></a>
+          <a
+            href="#antipain"
+            class="learnBtn"
+            @click="scrollToAntipain"
+            data-pixel-event="Custom"
+            data-pixel-custom-name="ProductCTAClick"
+            data-pixel-audience="b2c"
+            data-pixel-content-category="product"
+            data-pixel-content-name="track1_ph_learn_more"
+          ><span style="color:white;">Learn More</span></a>
         </div>
       </div>
     </div>
@@ -134,11 +157,21 @@ onBeforeUnmount(() => {
             data-pixel-event="Custom"
             data-pixel-custom-name="ProductCTAClick"
             data-pixel-audience="b2c"
+            data-pixel-content-category="product"
             data-pixel-content-name="track1_ph_hero_desktop"
           >
             <span style="color:white;">Buy Now</span>
           </NuxtLink>
-          <a href="#antipain" class="learnBtn"><span style="color:white;">Learn More</span></a>
+          <a
+            href="#antipain"
+            class="learnBtn"
+            @click="scrollToAntipain"
+            data-pixel-event="Custom"
+            data-pixel-custom-name="ProductCTAClick"
+            data-pixel-audience="b2c"
+            data-pixel-content-category="product"
+            data-pixel-content-name="track1_ph_learn_more"
+          ><span style="color:white;">Learn More</span></a>
         </div>
       </div>
     </div>
@@ -167,6 +200,7 @@ onBeforeUnmount(() => {
                 data-pixel-event="Custom"
                 data-pixel-custom-name="ProductCTAClick"
                 data-pixel-audience="b2c"
+                data-pixel-content-category="product"
                 data-pixel-content-name="track1_ph_skip_sales"
               >
                 <span style="color:white; text-decoration:none;">Start Tracking</span>
@@ -273,6 +307,7 @@ onBeforeUnmount(() => {
             data-pixel-event="Custom"
             data-pixel-custom-name="ProductCTAClick"
             data-pixel-audience="b2c"
+            data-pixel-content-category="product"
             data-pixel-content-name="track1_ph_comparison"
           >
             <span style="color:white; text-decoration:none;">Get the TRACK-1</span>
@@ -310,6 +345,7 @@ onBeforeUnmount(() => {
           data-pixel-event="Custom"
           data-pixel-custom-name="ProductCTAClick"
           data-pixel-audience="b2c"
+          data-pixel-content-category="product"
           data-pixel-content-name="track1_ph_prefooter"
         >
           <span style="color:white; text-decoration:none;">Order Now</span>
@@ -319,7 +355,17 @@ onBeforeUnmount(() => {
 
     <div id="chatProfile" style="position: fixed; bottom: 20px; right: 20px; z-index: 300; height: 60px;">
       <div v-show="!chatBubbleClosed" id="speechBubbleWrapper" style="position: absolute;top: -87%;right: 30px;width: 95px;">
-        <a href="https://www.messenger.com/t/1677175202317983" target="_blank" rel="noopener noreferrer" style="text-decoration:none;">
+        <a
+          href="https://www.messenger.com/t/1677175202317983"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="text-decoration:none;"
+          data-pixel-event="Contact"
+          data-pixel-audience="b2c"
+          data-pixel-content-category="contact"
+          data-pixel-lead-type="support_chat"
+          data-pixel-content-name="track1_ph_chat_bubble"
+        >
           <div id="speechBubble" style="color:black;background: white;padding: 4px 10px;font-size: 0.8rem;box-shadow: 0 0 8px -2px rgba(0,0,0,0.35);border-radius: 1em 1em 0 1em;">
             Hi, how can we help you?
           </div>
@@ -327,7 +373,17 @@ onBeforeUnmount(() => {
         <span class="close-btn" role="button" tabindex="0" aria-label="Close" @click="closeChatBubble" @keydown.enter="closeChatBubble">&times;</span>
       </div>
 
-      <a href="https://www.messenger.com/t/1677175202317983" target="_blank" rel="noopener noreferrer" style="display: block;">
+      <a
+        href="https://www.messenger.com/t/1677175202317983"
+        target="_blank"
+        rel="noopener noreferrer"
+        style="display: block;"
+        data-pixel-event="Contact"
+        data-pixel-audience="b2c"
+        data-pixel-content-category="contact"
+        data-pixel-lead-type="support_chat"
+        data-pixel-content-name="track1_ph_chat_icon"
+      >
         <img alt="Chat Support Profile Icon" src="https://photos.navitag.net/dump/assets/navitag-chat-profile.webp" style="height: 60px; width: 60px; border-radius: 30px; box-shadow: 0 0 8px -2px #000;">
       </a>
     </div>
@@ -338,6 +394,12 @@ onBeforeUnmount(() => {
 #comparisonTable {
   margin: 0 auto;
   max-width: 650px;
+  /* Tailwind preflight forces border-collapse:collapse, which kills the
+     per-cell border-radius and merges the 3px #F2F3F7 borders into shared
+     lines. Restore the original separate model so the rounded white cells
+     keep their gaps. */
+  border-collapse: separate;
+  border-spacing: 2px;
 }
 
 .howToHeader {
@@ -502,17 +564,21 @@ onBeforeUnmount(() => {
 }
 
 .close-btn {
+  /* Flex-center the × so it stays centered regardless of box model — the
+     original padding/line-height sizing assumed content-box, which Tailwind's
+     border-box preflight breaks. */
   position: absolute;
-  padding: 0.25em;
-  background: white;
-  height: 0.6em;
-  width: 0.6em;
-  text-align: center;
-  line-height: 0.6em;
-  border-radius: 2em;
-  font-size: 1rem;
   top: 0;
   right: -0.6em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  height: 1.1em;
+  background: white;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
   box-shadow: 0 0 8px -2px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   color: #000;
@@ -545,6 +611,10 @@ a:visited {
    font-family declaration, so icons render and everything else gets Funnel Sans. */
 .track1 {
   font-family: Funnel Sans, sans-serif;
+  /* Original standalone had a white <body>; the ph layout's beige
+     (bg-navitag-bg) would otherwise show through sections with no
+     background of their own. Restore white for this page's content. */
+  background: #fff;
 }
 
 #hero-desktop {
