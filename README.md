@@ -44,6 +44,7 @@ Front-facing website for the Navitag brand. Nuxt 4 + Tailwind + Pinia, with a gl
 - **`/ph/data-plans`**: Same `<DataPlansView>` component, `region="ph"` prop swaps hero copy ("Local coverage"), tier taglines (couriers, ride-hail, PUV/logistics), Basic perk to "Globe + Smart 4G LTE / 5G", Business perk to "LTFRB-certified hardware", and routes all CTAs into `/ph/*`. Comparison table splits "Local network" + "International roaming" rows.
 - **`/ph/business`**: PHP fleet pricing (₱650 Starter / ₱600 Growth / Custom Enterprise), Globe + Smart trust marker, Metro Manila + Cebu service tags, PH-specific use cases (Courier, PUV/shuttle, Rental, Logistics).
 - **`/ph/distribution`**: Online stores grid (Shopee, Lazada, Navitag Shop → `/shop`), authorized installation partners (Metro Manila + Cebu, configured as data array), bulk/fleet CTA → `/ph/business`.
+- **`/ph/products/track-1`**: B2C TRACK-1 product landing page (ported from a standalone HTML design). Self-contained scoped CSS, hero typewriter effect + scroll-reveal feature cards (cancellable on unmount), comparison table, 3-step setup, dismissible Messenger chat bubble. Satoshi display font loaded via Fontshare in `useHead` (Funnel Sans + Font Awesome are already global). All buy CTAs → `/shop/product/track-1` (tagged `data-pixel-*` `ProductCTAClick`); installer link → `/ph/distribution`. Uses the `ph` layout for regional header/footer.
 - **`/ph/contact`**: PH contact form / details.
 - **Header nav**: Where to Buy · Data Plans · For Business. CTA pill in the regional header is intentionally absent (PH `RegionConfig.cta` is unset; `HeaderRegional` guards both desktop and mobile via `v-if="region.cta"`). Footer: Shopping (Shopee/Lazada/Volume) + Company. Region label is "Philippines" everywhere (replaced earlier "Southeast Asia" copy).
 
@@ -166,6 +167,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 | `/ph/data-plans` | Yes | Live Medusa pricing (PH region) |
 | `/ph/business` | Yes | PH fleet pricing (PHP) + service grid |
 | `/ph/distribution` | Yes | Online stores + PH installation partners |
+| `/ph/products/track-1` | Yes | TRACK-1 B2C product landing page (CTAs → `/shop/product/track-1`) |
 | `/ph/contact` | Yes | PH contact form |
 | `/distribution` | No | → `/shop/product/track-1` (301) |
 | `/articles/[...slug]` | Conditional | Strapi articles (per-article `noindex`) |
