@@ -54,6 +54,15 @@ const paymentLoading = ref(false)
 const paymentError = ref('')
 const paying = ref(false)
 
+// e-wallet (Xendit GCash / Maya) state — used for PHP carts alongside PayPal card
+const xenditLoading = ref(false)
+const xenditError = ref('')
+const isPhp = computed(() => (cart.value?.currency_code || '').toLowerCase() === 'php')
+
+// PHP carts choose between GCash / Maya / Card. GCash + Maya redirect on click;
+// only 'card' reveals the billing + card form below.
+const payMethod = ref<'' | 'gcash' | 'maya' | 'card'>('')
+
 // Finalizing covers the window between 3DS close → onApprove fires →
 // Medusa /complete returns → navigation. Without this overlay the
 // customer briefly sees the checkout page after the 3DS modal closes,
@@ -120,6 +129,14 @@ onMounted(async () => {
     if (basic.country) billing.countryCode = basic.country.toUpperCase()
   }).catch(() => {})
   await fetchCart()
+
+  // Non-PHP carts pay by card only — auto-mount the secure card form once the
+  // cart (and thus the card container DOM) is rendered. PHP carts mount it
+  // lazily when the customer taps the Card method.
+  if (!isPhp.value && email.value) {
+    await nextTick()
+    ensureCardForm()
+  }
 })
 
 function validateBilling(): boolean {
@@ -164,6 +181,59 @@ async function fetchCart() {
 const lineItem = computed(() => cart.value?.items?.[0] || null)
 const imei = computed(() => lineItem.value?.metadata?.imei || '—')
 
+// Payment-method picker (PHP). Card mounts the PayPal form; wallets redirect.
+function selectMethod(method: 'gcash' | 'maya' | 'card') {
+  payMethod.value = method
+  if (method === 'card') {
+    ensureCardForm()
+    return
+  }
+  // Switching to a wallet removes the card form from the DOM (tearing down the
+  // PayPal iframes). Reset card state so re-selecting Card remounts cleanly.
+  paymentReady.value = false
+  cardFields = null
+  payWithXendit(method === 'gcash' ? 'pp_xendit_gcash' : 'pp_xendit_maya')
+}
+
+// Mount the PayPal card form on demand — idempotent (skips if already
+// mounting/mounted). Used by the Card method tap and non-PHP auto-load.
+function ensureCardForm() {
+  if (paymentReady.value || paymentLoading.value) return
+  initPayment()
+}
+
+// --- Xendit e-wallet (GCash / Maya) — PHP carts only ---
+async function payWithXendit(provider: 'pp_xendit_gcash' | 'pp_xendit_maya') {
+  if (!email.value) {
+    xenditError.value = 'Please enter your email address first.'
+    return
+  }
+  xenditLoading.value = true
+  xenditError.value = ''
+  try {
+    const firebaseUid = auth.currentUser?.uid
+    // Persist email (+ firebase_uid) WITHOUT clobbering existing cart metadata
+    // — device_imei lives there and the top-up webhook needs it.
+    await medusaFetch(`/store/carts/${cartId.value}`, {
+      method: 'POST',
+      body: {
+        email: email.value,
+        metadata: {
+          ...(cart.value?.metadata || {}),
+          ...(firebaseUid ? { firebase_uid: firebaseUid } : {}),
+        },
+      },
+    })
+    const { startPayment } = useXenditCheckout()
+    // Redirects to GCash / Maya; control does not return to this page.
+    await startPayment({ cartId: cartId.value, provider, flow: 'topup' })
+  }
+  catch (e: any) {
+    xenditError.value = e?.data?.message || e?.message || 'Could not start payment. Please try again.'
+    xenditLoading.value = false
+  }
+}
+
 function formatPrice(amount: number, currencyCode: string) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -182,33 +252,21 @@ async function initPayment() {
     paymentError.value = 'Please enter your email address first.'
     return
   }
-  if (!validateBilling()) {
-    paymentError.value = 'Please complete your billing address.'
-    return
-  }
 
   paymentLoading.value = true
   paymentError.value = ''
   paymentReady.value = false
 
   try {
-    // 1. Update cart with email + billing_address (Medusa shape)
+    // 1. Update cart with email. Billing address is deferred to Pay Now
+    //    (submitPayment) so the card form can mount before billing is filled.
+    //    Preserve existing metadata (e.g. device_imei) when stamping firebase_uid.
     const firebaseUid = auth.currentUser?.uid
     await medusaFetch(`/store/carts/${cartId.value}`, {
       method: 'POST',
       body: {
         email: email.value,
-        billing_address: {
-          first_name: billing.firstName.trim(),
-          last_name: billing.lastName.trim(),
-          address_1: billing.addressLine1.trim(),
-          address_2: billing.addressLine2.trim() || undefined,
-          city: billing.adminArea2.trim(),
-          province: billing.adminArea1.trim() || undefined,
-          postal_code: billing.postalCode.trim(),
-          country_code: billing.countryCode.toLowerCase(),
-        },
-        ...(firebaseUid ? { metadata: { firebase_uid: firebaseUid } } : {}),
+        ...(firebaseUid ? { metadata: { ...(cart.value?.metadata || {}), firebase_uid: firebaseUid } } : {}),
       },
     })
 
@@ -323,6 +381,35 @@ async function submitPayment() {
 
   paying.value = true
   paymentError.value = ''
+
+  // Persist email + billing address now (deferred from initPayment so the card
+  // form could mount before billing was filled). Preserve existing metadata.
+  try {
+    const firebaseUid = auth.currentUser?.uid
+    await medusaFetch(`/store/carts/${cartId.value}`, {
+      method: 'POST',
+      body: {
+        email: email.value,
+        billing_address: {
+          first_name: billing.firstName.trim(),
+          last_name: billing.lastName.trim(),
+          address_1: billing.addressLine1.trim(),
+          address_2: billing.addressLine2.trim() || undefined,
+          city: billing.adminArea2.trim(),
+          province: billing.adminArea1.trim() || undefined,
+          postal_code: billing.postalCode.trim(),
+          country_code: billing.countryCode.toLowerCase(),
+        },
+        ...(firebaseUid ? { metadata: { ...(cart.value?.metadata || {}), firebase_uid: firebaseUid } } : {}),
+      },
+    })
+  }
+  catch (e: any) {
+    paying.value = false
+    paymentError.value = e?.data?.message || e?.message || 'Could not save your billing details. Please try again.'
+    return
+  }
+
   console.log('[plan-checkout] submitPayment → cardFields.submit() begin')
   const submitStart = Date.now()
   try {
@@ -614,13 +701,90 @@ async function dismissFailure() {
           </div>
         </div>
 
-        <!-- Billing Information -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-          <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
-            <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Billing Information</h2>
+        <!-- E-wallet payment (PH / PHP carts) -->
+        <template v-if="isPhp">
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Contact email</h2>
+            </div>
+            <div class="px-6 py-4">
+              <input
+                v-model="email"
+                type="email"
+                autocomplete="email"
+                placeholder="you@example.com"
+                :disabled="xenditLoading"
+                class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
+              >
+              <p class="text-xs text-gray-400 mt-2">Your payment confirmation will be sent here.</p>
+            </div>
           </div>
-          <div class="px-6 py-4 space-y-4">
-            <div>
+
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Payment Methods</h2>
+            </div>
+            <div class="px-6 py-5">
+              <div class="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  :disabled="!email || xenditLoading"
+                  aria-label="Pay with GCash"
+                  class="flex items-center justify-center h-16 rounded-xl border-2 bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="payMethod === 'gcash' ? 'border-navitag-blue ring-2 ring-navitag-blue/15' : 'border-gray-200 hover:border-gray-300'"
+                  @click="selectMethod('gcash')"
+                >
+                  <img src="/payments/gcash.svg" alt="GCash" class="max-h-6 max-w-full object-contain">
+                </button>
+                <button
+                  type="button"
+                  :disabled="!email || xenditLoading"
+                  aria-label="Pay with Maya"
+                  class="flex items-center justify-center h-16 rounded-xl border-2 bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="payMethod === 'maya' ? 'border-navitag-blue ring-2 ring-navitag-blue/15' : 'border-gray-200 hover:border-gray-300'"
+                  @click="selectMethod('maya')"
+                >
+                  <img src="/payments/maya.svg" alt="Maya" class="max-h-5 max-w-full object-contain">
+                </button>
+                <button
+                  type="button"
+                  :disabled="!email || xenditLoading"
+                  aria-label="Pay with credit or debit card"
+                  class="flex items-center justify-center h-16 rounded-xl border-2 bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="payMethod === 'card' ? 'border-navitag-blue ring-2 ring-navitag-blue/15' : 'border-gray-200 hover:border-gray-300'"
+                  @click="selectMethod('card')"
+                >
+                  <i class="fas fa-credit-card text-2xl text-gray-700"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="xenditError" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
+            <i class="fas fa-times-circle mr-2"></i>{{ xenditError }}
+          </div>
+          <div v-if="xenditLoading" class="mb-4 p-4 bg-blue-50 border border-blue-100 rounded-xl text-navitag-blue text-sm text-center">
+            <i class="fas fa-spinner fa-spin mr-2"></i>Redirecting to your e-wallet…
+          </div>
+        </template>
+
+        <!-- Credit / Debit Card — one card: logos + billing + card fields + Pay Now.
+             Non-PHP shows it always; PHP shows it once the "Card" method is picked. -->
+        <div v-if="!isPhp || payMethod === 'card'" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+          <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
+            <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Credit / Debit Card</h2>
+          </div>
+          <div class="px-6 py-5 space-y-4">
+            <!-- Supported card networks (logos from Wikimedia Commons) -->
+            <div class="flex items-center gap-3" aria-label="Supported cards">
+              <img src="/payments/visa.svg" alt="Visa" class="h-6 w-auto">
+              <img src="/payments/mastercard.svg" alt="Mastercard" class="h-6 w-auto">
+              <img src="/payments/amex.svg" alt="American Express" class="h-6 w-auto">
+              <img src="/payments/jcb.svg" alt="JCB" class="h-6 w-auto">
+            </div>
+            <!-- For PHP the email is captured in the Contact email card above
+                 (the e-wallet buttons need it too), so hide the duplicate here. -->
+            <div v-if="!isPhp">
               <label for="email" class="block text-xs font-medium text-gray-500 mb-1.5">Email Address</label>
               <input
                 id="email"
@@ -628,7 +792,7 @@ async function dismissFailure() {
                 type="email"
                 autocomplete="email"
                 placeholder="you@example.com"
-                :disabled="paymentReady || paymentLoading"
+                :disabled="paying || finalizing"
                 class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
               >
             </div>
@@ -640,7 +804,7 @@ async function dismissFailure() {
                   v-model="billing.firstName"
                   type="text"
                   autocomplete="given-name"
-                  :disabled="paymentReady || paymentLoading"
+                  :disabled="paying || finalizing"
                   class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
                   :class="billingErrors.firstName ? 'border-red-300' : 'border-gray-200'"
                 >
@@ -653,7 +817,7 @@ async function dismissFailure() {
                   v-model="billing.lastName"
                   type="text"
                   autocomplete="family-name"
-                  :disabled="paymentReady || paymentLoading"
+                  :disabled="paying || finalizing"
                   class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
                   :class="billingErrors.lastName ? 'border-red-300' : 'border-gray-200'"
                 >
@@ -661,27 +825,27 @@ async function dismissFailure() {
               </div>
             </div>
             <div>
-              <label for="addr1" class="block text-xs font-medium text-gray-500 mb-1.5">Street Address</label>
+              <label for="addr1" class="block text-xs font-medium text-gray-500 mb-1.5">Address Line 1</label>
               <input
                 id="addr1"
                 v-model="billing.addressLine1"
                 type="text"
                 autocomplete="address-line1"
                 placeholder="123 Main St"
-                :disabled="paymentReady || paymentLoading"
+                :disabled="paying || finalizing"
                 class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
                 :class="billingErrors.addressLine1 ? 'border-red-300' : 'border-gray-200'"
               >
               <p v-if="billingErrors.addressLine1" class="text-xs text-red-600 mt-1">{{ billingErrors.addressLine1 }}</p>
             </div>
             <div>
-              <label for="addr2" class="block text-xs font-medium text-gray-500 mb-1.5">Apt, suite, etc. <span class="text-gray-400">(optional)</span></label>
+              <label for="addr2" class="block text-xs font-medium text-gray-500 mb-1.5">Address Line 2 <span class="text-gray-400">(optional)</span></label>
               <input
                 id="addr2"
                 v-model="billing.addressLine2"
                 type="text"
                 autocomplete="address-line2"
-                :disabled="paymentReady || paymentLoading"
+                :disabled="paying || finalizing"
                 class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
               >
             </div>
@@ -693,7 +857,7 @@ async function dismissFailure() {
                   v-model="billing.adminArea2"
                   type="text"
                   autocomplete="address-level2"
-                  :disabled="paymentReady || paymentLoading"
+                  :disabled="paying || finalizing"
                   class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
                   :class="billingErrors.adminArea2 ? 'border-red-300' : 'border-gray-200'"
                 >
@@ -706,7 +870,7 @@ async function dismissFailure() {
                   v-model="billing.adminArea1"
                   type="text"
                   autocomplete="address-level1"
-                  :disabled="paymentReady || paymentLoading"
+                  :disabled="paying || finalizing"
                   class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
                   :class="billingErrors.adminArea1 ? 'border-red-300' : 'border-gray-200'"
                 >
@@ -721,7 +885,7 @@ async function dismissFailure() {
                   v-model="billing.postalCode"
                   type="text"
                   autocomplete="postal-code"
-                  :disabled="paymentReady || paymentLoading"
+                  :disabled="paying || finalizing"
                   class="w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
                   :class="billingErrors.postalCode ? 'border-red-300' : 'border-gray-200'"
                 >
@@ -733,86 +897,73 @@ async function dismissFailure() {
                   id="country"
                   v-model="billing.countryCode"
                   autocomplete="country"
-                  disabled
-                  aria-readonly="true"
-                  class="w-full px-4 py-3 rounded-xl border text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                  :disabled="paying || finalizing"
+                  class="w-full px-4 py-3 rounded-xl border text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
                   :class="billingErrors.countryCode ? 'border-red-300' : 'border-gray-200'"
                 >
-                  <option value="" disabled>Detecting...</option>
+                  <option value="" disabled>Select country</option>
                   <option v-for="c in sortedCountries" :key="c.code" :value="c.code">{{ c.name }}</option>
                 </select>
-                <p class="mt-1 text-[11px] text-gray-400">
-                  <i class="fas fa-lock mr-1"></i>Set from your account region.
-                </p>
                 <p v-if="billingErrors.countryCode" class="text-xs text-red-600 mt-1">{{ billingErrors.countryCode }}</p>
               </div>
             </div>
-          </div>
-        </div>
+            <!-- Card details -->
+            <div class="pt-1">
+              <div v-if="paymentLoading" class="py-6 text-center">
+                <i class="fas fa-spinner fa-spin fa-lg text-navitag-blue"></i>
+                <p class="text-gray-500 mt-3 text-sm">Preparing secure card form…</p>
+              </div>
 
-        <!-- Payment Section -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
-          <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
-            <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Payment</h2>
-          </div>
+              <div v-show="paymentReady" class="space-y-4">
+                <div>
+                  <label class="block text-xs font-medium text-gray-500 mb-1.5">Card Number</label>
+                  <div id="card-number-field" class="paypal-field-container"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1.5">Expiry</label>
+                    <div id="card-expiry-field" class="paypal-field-container"></div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1.5">CVV</label>
+                    <div id="card-cvv-field" class="paypal-field-container"></div>
+                  </div>
+                </div>
+              </div>
 
-          <!-- Before payment init: show button to proceed -->
-          <div v-if="!paymentReady && !paymentLoading" class="px-6 py-6">
+              <!-- Fallback if the secure form didn't auto-load -->
+              <button
+                v-if="!paymentReady && !paymentLoading"
+                type="button"
+                class="w-full py-3 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition"
+                @click="ensureCardForm"
+              >
+                <i class="fas fa-rotate-right mr-2"></i>Load secure card form
+              </button>
+            </div>
+
+            <!-- Payment error -->
+            <div v-if="paymentError" class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
+              <i class="fas fa-times-circle mr-2"></i>{{ paymentError }}
+            </div>
+
+            <!-- Pay Now — charges the card -->
             <button
-              :disabled="!email || !billingComplete"
-              class="w-full py-3 rounded-xl bg-gray-900 text-white font-semibold text-sm hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
-              @click="initPayment"
+              :disabled="!paymentReady || paying || !cardValid || !billingComplete || !email"
+              class="w-full py-4 rounded-xl bg-navitag-blue text-white font-bold text-lg hover:bg-opacity-90 transition shadow-lg shadow-navitag-blue/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              @click="submitPayment"
             >
-              <i class="fas fa-credit-card mr-2"></i>Pay with Credit/Debit Card
+              <span v-if="paying">
+                <i class="fas fa-spinner fa-spin mr-2"></i>Processing Payment…
+              </span>
+              <span v-else>
+                Pay Now · {{ formatPrice(cart.total ?? cart.subtotal ?? 0, cart.currency_code) }}
+              </span>
             </button>
           </div>
-
-          <!-- Loading payment -->
-          <div v-if="paymentLoading" class="px-6 py-8 text-center">
-            <i class="fas fa-spinner fa-spin fa-lg text-navitag-blue"></i>
-            <p class="text-gray-500 mt-3 text-sm">Preparing secure payment...</p>
-          </div>
-
-          <!-- Card Fields -->
-          <div v-show="paymentReady" class="px-6 py-5 space-y-4">
-            <div>
-              <label class="block text-xs font-medium text-gray-500 mb-1.5">Card Number</label>
-              <div id="card-number-field" class="paypal-field-container"></div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1.5">Expiry</label>
-                <div id="card-expiry-field" class="paypal-field-container"></div>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1.5">CVV</label>
-                <div id="card-cvv-field" class="paypal-field-container"></div>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <!-- Payment Error -->
-        <div v-if="paymentError" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
-          <i class="fas fa-times-circle mr-2"></i>{{ paymentError }}
-        </div>
-
-        <!-- Pay Button -->
-        <button
-          v-if="paymentReady"
-          :disabled="paying || !cardValid || !billingComplete"
-          class="w-full py-4 rounded-xl bg-navitag-blue text-white font-bold text-lg hover:bg-opacity-90 transition shadow-lg shadow-navitag-blue/20 disabled:opacity-40 disabled:cursor-not-allowed"
-          @click="submitPayment"
-        >
-          <span v-if="paying">
-            <i class="fas fa-spinner fa-spin mr-2"></i>Processing Payment...
-          </span>
-          <span v-else>
-            Pay {{ formatPrice(cart.total ?? cart.subtotal ?? 0, cart.currency_code) }}
-          </span>
-        </button>
-
-        <p class="text-center text-xs text-gray-400 mt-4">
+        <p v-if="!isPhp" class="text-center text-xs text-gray-400 mt-4">
           <i class="fas fa-lock mr-1"></i>Secure payment powered by PayPal.
           By placing your order, you agree to Navitag's
           <NuxtLink to="/privacy-policy" class="text-navitag-blue underline">Privacy Policy</NuxtLink>.

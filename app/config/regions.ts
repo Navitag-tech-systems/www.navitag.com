@@ -77,6 +77,7 @@ export const UTILITY_PREFIXES = [
   '/top-up',
   '/plan-checkout',
   '/renew-complete',
+  '/checkout/xendit',
   '/login',
   '/signup',
   '/forgot-password',
