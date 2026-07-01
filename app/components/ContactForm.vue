@@ -31,6 +31,16 @@ const name = ref('')
 const email = ref('')
 const message = ref('')
 
+// --- Front-end spam protection ---
+// honeypot: a field hidden from humans; only bots fill it.
+// time-trap: a human can't complete the form in under MIN_SUBMIT_MS.
+// cooldown: throttle repeat submits from the same browser.
+const website = ref('') // honeypot — must stay empty for real users
+const formLoadedAt = ref(0)
+const MIN_SUBMIT_MS = 1200
+const COOLDOWN_MS = 10_000
+const COOLDOWN_KEY = 'navitag_contact_last_submit'
+
 type Status = 'idle' | 'submitting' | 'success' | 'error'
 const status = ref<Status>('idle')
 const errorMessage = ref('')
@@ -38,7 +48,10 @@ const errorMessage = ref('')
 // Country: prefers logged-in profile, falls back to IP. Informational only —
 // the field is allowed to be null if detection fails.
 const basic = useBasicStore()
-onMounted(() => { basic.resolveCountry() })
+onMounted(() => {
+  basic.resolveCountry()
+  formLoadedAt.value = Date.now()
+})
 const countryCode = computed(() => basic.country || '')
 const { $fbq } = useNuxtApp()
 
@@ -51,6 +64,31 @@ const isValid = computed(() =>
 
 async function submit() {
   if (!isValid.value || status.value === 'submitting') return
+
+  const now = Date.now()
+
+  // Cooldown: throttle rapid repeat submissions from the same browser.
+  try {
+    const last = Number(localStorage.getItem(COOLDOWN_KEY) || 0)
+    if (last && now - last < COOLDOWN_MS) {
+      status.value = 'error'
+      errorMessage.value = 'Please wait a few seconds before sending another message.'
+      return
+    }
+  }
+  catch { /* localStorage unavailable — skip the cooldown check */ }
+
+  // Honeypot filled, or submitted implausibly fast → almost certainly a bot.
+  // Show success but send nothing (no POST, no Lead) so the bot gets no signal
+  // and stops retrying. Real users never trip this.
+  if (website.value.trim() !== '' || now - formLoadedAt.value < MIN_SUBMIT_MS) {
+    name.value = ''
+    email.value = ''
+    message.value = ''
+    status.value = 'success'
+    return
+  }
+
   status.value = 'submitting'
   errorMessage.value = ''
 
@@ -61,6 +99,7 @@ async function submit() {
     country_code: countryCode.value || '',
     subject: props.subject || '',
     source_url: typeof window !== 'undefined' ? window.location.href : '',
+    website: website.value, // honeypot (empty for humans) — lets the API reject too
   }
 
   const body = new URLSearchParams()
@@ -77,6 +116,8 @@ async function submit() {
       throw new Error(text || `Request failed (${res.status})`)
     }
     status.value = 'success'
+    try { localStorage.setItem(COOLDOWN_KEY, String(Date.now())) }
+    catch { /* ignore */ }
     const audience = inferAudience({ subject: props.subject })
     // Feed the submitted email into Meta user_data (hashed) so the Lead event
     // carries `em` even for anonymous submitters — lifts Email match coverage.
@@ -237,6 +278,32 @@ function reset() {
           Sending from <span class="font-semibold text-gray-600">{{ countryCode }}</span>
         </span>
       </div>
+
+      <!-- Honeypot: hidden from real users; bots that fill it are dropped. -->
+      <div class="cf-hp" aria-hidden="true">
+        <label for="cf-website">Website</label>
+        <input
+          id="cf-website"
+          v-model="website"
+          type="text"
+          name="website"
+          tabindex="-1"
+          autocomplete="off"
+        >
+      </div>
     </form>
   </div>
 </template>
+
+<style scoped>
+/* Honeypot — removed from view but kept in the DOM for bots to fill. Uses
+   off-screen positioning (not display:none, which naive bots skip) plus
+   aria-hidden + tabindex=-1 so humans and assistive tech never reach it. */
+.cf-hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+</style>
