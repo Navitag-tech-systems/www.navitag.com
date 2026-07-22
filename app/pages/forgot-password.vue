@@ -28,8 +28,13 @@ if (import.meta.client) {
 }
 
 onMounted(async () => {
+  // Always sign out on landing — this is the password-reset page, so any
+  // existing session must be cleared. Unconditional (not `if (basic.user)`):
+  // ensureAuthResolved() can time out with basic.user still null mid-restore,
+  // which would skip the signout and leave the session live once it finishes
+  // restoring. signOut is a harmless no-op when already signed out.
   await basic.ensureAuthResolved()
-  if (basic.user) await basic.logout()
+  await basic.logout()
   ready.value = true
 })
 

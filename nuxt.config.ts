@@ -33,6 +33,15 @@ export default defineNuxtConfig({
       // Set to a non-empty string (e.g. "TEST12345") in staging so events
       // land in Meta's Test Events tab rather than production. Empty in prod.
       metaTestEventCode: '',
+      // Firebase App Check reCAPTCHA v3 site key (PUBLIC — safe to ship, like
+      // the keys above). Same key as track.navitag.com (registered for
+      // navitag.com, covers the subdomain). Either paste it here or set
+      // NUXT_PUBLIC_APPCHECK_RECAPTCHA_V3_SITE_KEY in Vercel. Empty → App Check
+      // stays off (non-breaking) until provided.
+      appcheckRecaptchaV3SiteKey: '',
+      // Optional: pin a localhost App Check debug token
+      // (NUXT_PUBLIC_APPCHECK_DEBUG_TOKEN). Empty → SDK generates one in dev.
+      appcheckDebugToken: '',
     },
   },
 
