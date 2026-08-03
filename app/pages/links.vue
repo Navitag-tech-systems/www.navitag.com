@@ -25,6 +25,9 @@ const year = new Date().getFullYear()
 const WEB_APP_URL = 'https://track.navitag.com/signup'
 // Android app listing on the Play Store.
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.navitag.track'
+// iOS app listing. App Store availability is Philippines-only, so this is a
+// /ph/ storefront link and is only offered to PH visitors.
+const APP_STORE_URL = 'https://apps.apple.com/ph/app/navitag-track/id6758300749'
 // Viber deep link to the official PH account (+63 917 638 8402).
 const VIBER_URL = 'viber://chat?number=%2B639176388402'
 
@@ -142,7 +145,18 @@ onMounted(async () => {
           <span class="text-[15px] font-semibold tracking-tight">Get it on Google Play</span>
         </a>
 
-        <!-- iOS → App Store (disabled, launching soon) -->
+        <!-- iOS + PH → App Store (live in the PH storefront) -->
+        <a
+          v-else-if="isIos && isPh"
+          :href="APP_STORE_URL"
+          rel="noopener"
+          class="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gray-950 px-5 py-4 text-white shadow-sm transition hover:bg-black active:scale-[0.99]"
+        >
+          <i class="fab fa-apple text-lg"></i>
+          <span class="text-[15px] font-semibold tracking-tight">Download on the App Store</span>
+        </a>
+
+        <!-- iOS elsewhere → not yet on sale in their storefront -->
         <div
           v-else-if="isIos"
           aria-disabled="true"
