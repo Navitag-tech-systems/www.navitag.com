@@ -24,7 +24,7 @@ const { $fbq } = useNuxtApp()
 // route at fire time — pages with B2B intent (e.g. invite from a fleet
 // account) can pass an explicit override via `audience` prop if needed.
 
-function fireLogin(method: 'email' | 'google' | 'apple') {
+function fireLogin(method: 'email' | 'google' | 'apple' | 'microsoft') {
   $fbq.custom('Login', {
     method,
     content_name: `${method}_login`,
@@ -131,6 +131,28 @@ async function loginWithApple() {
   }
 }
 
+async function loginWithMicrosoft() {
+  loading.value = true
+  error.value = ''
+  try {
+    const provider = new OAuthProvider('microsoft.com')
+    provider.addScope('openid')
+    provider.addScope('email')
+    provider.addScope('profile')
+    const cred = await signInWithPopup(auth, provider)
+    await Promise.all([
+      exchangeMedusaToken(cred.user),
+      backendSync(cred.user, null, props.ipCountryCode),
+    ])
+    fireLogin('microsoft')
+    onSuccess()
+  } catch (e: any) {
+    error.value = e?.message?.replace('Firebase: ', '') || 'Microsoft login failed'
+  } finally {
+    loading.value = false
+  }
+}
+
 watch(() => props.modelValue, (val) => {
   if (val) reset()
 })
@@ -218,6 +240,14 @@ watch(() => props.modelValue, (val) => {
             title="Apple"
           >
             <i class="fab fa-apple text-xl"></i>
+          </button>
+          <button
+            :disabled="loading"
+            class="w-12 h-12 rounded-full bg-[#0078D4] text-white flex items-center justify-center hover:bg-[#106EBE] transition disabled:opacity-50"
+            @click="loginWithMicrosoft"
+            title="Microsoft"
+          >
+            <i class="fa-brands fa-windows text-lg"></i>
           </button>
         </div>
 
