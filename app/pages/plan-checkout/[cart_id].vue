@@ -180,6 +180,9 @@ async function fetchCart() {
 
 const lineItem = computed(() => cart.value?.items?.[0] || null)
 const imei = computed(() => lineItem.value?.metadata?.imei || '—')
+// Owner-assigned device name, carried on the line item by top-up/[imei].vue.
+// Absent on carts built before that change, in which case only the IMEI shows.
+const deviceName = computed(() => lineItem.value?.metadata?.ref1 || '')
 
 // Payment-method picker (PHP). Card mounts the PayPal form; wallets redirect.
 function selectMethod(method: 'gcash' | 'maya' | 'card') {
@@ -681,6 +684,7 @@ async function dismissFailure() {
                 <div class="flex-1">
                   <p class="font-semibold text-gray-900 text-sm">{{ lineItem.product_title || lineItem.title }}</p>
                   <p class="text-xs text-gray-500 mt-0.5">{{ lineItem.variant_title || '' }}</p>
+                  <p v-if="deviceName" class="text-xs text-gray-500 mt-1">Device: <span class="font-medium text-gray-700">{{ deviceName }}</span></p>
                   <p class="text-xs text-gray-400 mt-1">IMEI: <span class="font-mono">{{ imei }}</span></p>
                 </div>
                 <span class="font-bold text-gray-900 text-sm">

@@ -206,6 +206,33 @@ function formatPrice(variant: any): string {
   return '—'
 }
 
+// The owner-assigned device name. ref1 is the single name of record:
+// User::linkDevice seeds it and Device::update mirrors every rename into it.
+//
+// A device still on the shelf carries the "@@ 1234/5678" inventory marker in
+// ref1 — a shelf state, not a name — so it falls back to the IMEI, matching
+// DeviceNaming::displayNameSql() on the API side. ref2 is the retired link-time
+// store and is deliberately not consulted; `model` is a product model
+// ('TRACK-1'), never a name.
+const deviceName = computed(() => {
+  const ref1 = String(device.value?.ref1 || '').trim()
+  if (ref1 === '' || ref1.startsWith('@@')) return device.value?.imei || ''
+  return ref1
+})
+
+// device.plan_level is canonical lowercase from the API (Inventory::check
+// lowercases every row before serving); plan.tier is display-cased
+// ('Basic' / 'Pro') because it comes from the Medusa product tag. Comparing
+// them directly never matched, so every card rendered "Change Plan" and the
+// "Current" badge never appeared. Normalize on one axis, capitalize only at
+// display.
+const currentTier = computed(() => String(device.value?.plan_level || 'basic').toLowerCase())
+const currentTierLabel = computed(() => (currentTier.value === 'pro' ? 'Pro' : 'Basic'))
+
+function isCurrentTier(tier: string): boolean {
+  return String(tier).toLowerCase() === currentTier.value
+}
+
 function durationLabel(variant: any): string {
   const title = (variant.title || '').toLowerCase()
   if (title.includes('12')) return '12 Months'
@@ -266,7 +293,14 @@ async function buyPlan(productId: string) {
       body: {
         variant_id: variantId,
         quantity: 1,
-        metadata: { imei: imei.value },
+        // ref1 is the owner-assigned device name (device_inventory.ref1, kept in
+        // step with Traccar by Device::update). It is carried on the line item so
+        // the downstream checkout + completion pages can name the device without
+        // an authenticated /inventory/check call -- those pages authenticate with
+        // the publishable key only. renew-complete already read metadata.ref1;
+        // nothing had ever written it, so it always fell back to the plan's
+        // product title.
+        metadata: { imei: imei.value, ref1: deviceName.value },
       },
     })
 
@@ -347,10 +381,10 @@ function onLoginSuccess() {
       <!-- Device Result -->
       <div v-if="device" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="p-6">
-          <h2 class="font-bold text-gray-950 text-lg">{{ device.ref1 || device.model }}</h2>
+          <h2 class="font-bold text-gray-950 text-lg">{{ deviceName }}</h2>
           <div class="mt-2 text-sm text-gray-500">
             <div>Device Unique ID: <span class="font-mono font-medium text-gray-700">{{ device.imei }}</span></div>
-            <div>Plan: <span class="font-semibold" :class="device.plan_level === 'Pro' ? 'text-navitag-blue' : 'text-gray-700'">{{ device.plan_level || 'Basic' }}</span></div>
+            <div>Plan: <span class="font-semibold" :class="currentTier === 'pro' ? 'text-navitag-blue' : 'text-gray-700'">{{ currentTierLabel }}</span></div>
             <div>Expiration: <span class="font-semibold" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">{{ device.expiration ? formatExpiration(device.expiration) : '—' }}</span></div>
           </div>
         </div>
@@ -388,14 +422,14 @@ function onLoginSuccess() {
               <div
                 class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-2"
                 :class="[
-                  plan.tier === (device?.plan_level || 'Basic')
+                  isCurrentTier(plan.tier)
                     ? (plan.tier === 'Pro' ? 'bg-white text-navitag-blue' : 'bg-navitag-orange text-white')
                     : plan.tier === 'Pro'
                       ? 'bg-white text-navitag-blue'
                       : 'invisible'
                 ]"
               >
-                {{ plan.tier === (device?.plan_level || 'Basic')
+                {{ isCurrentTier(plan.tier)
                   ? (plan.tier === 'Pro' ? 'Current Plan' : 'Current')
                   : 'Recommended' }}
               </div>
@@ -449,7 +483,7 @@ function onLoginSuccess() {
                   <i class="fas fa-spinner fa-spin mr-2"></i>Processing...
                 </span>
                 <span v-else>
-                  {{ plan.tier == (device?.plan_level || 'Basic') ? "Top-up Now" : "Change Plan" }}
+                  {{ isCurrentTier(plan.tier) ? "Top-up Now" : "Change Plan" }}
                 </span>
               </button>
             </div>

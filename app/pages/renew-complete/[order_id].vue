@@ -28,6 +28,9 @@ async function fetchOrder() {
   error.value = ''
   try {
     const res = await $fetch<{ order: any }>(`${MEDUSA_BACKEND_URL}/store/orders/${orderId.value}`, {
+      // payment_collections come back by default but WITHOUT their payments,
+      // which is where provider_id lives. Ask for them explicitly.
+      params: { fields: '*payment_collections.payments' },
       headers,
     })
     order.value = res.order
@@ -40,7 +43,40 @@ async function fetchOrder() {
 
 const lineItem = computed(() => order.value?.items?.[0] || null)
 const imei = computed(() => lineItem.value?.metadata?.imei || '—')
-const deviceName = computed(() => lineItem.value?.metadata?.ref1 || lineItem.value?.product_title || '—')
+// metadata.ref1 is the owner-assigned device name, stamped onto the line item
+// when the cart is built (top-up/[imei].vue). Orders placed BEFORE that change
+// carry no ref1, so the product-title fallback stays for them -- but it names
+// the plan, not the device, so prefer the IMEI when we have one.
+const deviceName = computed(() =>
+  lineItem.value?.metadata?.ref1
+  || lineItem.value?.metadata?.imei
+  || lineItem.value?.product_title
+  || '—')
+
+// The payment method used to be hardcoded to "Card via PayPal", which
+// mislabelled every GCash / Maya order once Xendit went live (both e-wallet
+// flows land on this page via /checkout/xendit/success).
+const PAYMENT_METHODS: Record<string, { label: string, icon: string }> = {
+  pp_paypal_paypal: { label: 'Card via PayPal', icon: 'fa-credit-card' },
+  pp_xendit_gcash: { label: 'GCash', icon: 'fa-wallet' },
+  pp_xendit_maya: { label: 'Maya', icon: 'fa-wallet' },
+  pp_revenuecat_iap: { label: 'In-App Purchase', icon: 'fa-mobile-alt' },
+}
+
+const providerId = computed<string | null>(() => {
+  for (const collection of order.value?.payment_collections || []) {
+    for (const payment of collection?.payments || []) {
+      if (payment?.provider_id) return payment.provider_id as string
+    }
+  }
+  return null
+})
+
+const paymentMethod = computed(() => {
+  const id = providerId.value
+  if (!id) return null
+  return PAYMENT_METHODS[id] || { label: 'E-Wallet', icon: 'fa-wallet' }
+})
 
 function formatPrice(amount: number, currencyCode: string) {
   return new Intl.NumberFormat('en-US', {
@@ -150,10 +186,10 @@ function formatDate(dateStr: string) {
                 {{ formatPrice(order.total ?? 0, order.currency_code) }}
               </span>
             </div>
-            <div class="px-6 py-3 flex justify-between items-center">
+            <div v-if="paymentMethod" class="px-6 py-3 flex justify-between items-center">
               <span class="text-sm text-gray-500">Payment</span>
               <span class="text-sm text-gray-700">
-                <i class="fas fa-credit-card mr-1 text-gray-400"></i>Card via PayPal
+                <i class="fas mr-1 text-gray-400" :class="paymentMethod.icon"></i>{{ paymentMethod.label }}
               </span>
             </div>
             <div class="px-6 py-3 flex justify-between items-center">
