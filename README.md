@@ -25,6 +25,10 @@ Front-facing website for the Navitag brand. Nuxt 4 + Tailwind + Pinia, with a gl
 
 ### Data Plan Top-Up Flow (digital)
 - **`/top-up/:imei`**: Awaits Firebase auth restore + IP country (`Promise.all`) before routing — eliminates the prior race where products loaded against the IP fallback region. If unauthenticated → login overlay opens with the IP country passed in explicitly. Cart-create body includes `sales_channel_id: MEDUSA_HIDDEN_SALES_CHANNEL_ID` (the all-scope publishable key is bound to multiple sales channels and Medusa needs the digital-only one disambiguated). Shipping option for digital delivery is `MEDUSA_DIGITAL_DELIVERY_OPTION_ID` (constant in `app/variables.ts`). `buyPlan` keeps `cartLoading=true` through the `await navigateTo()` so the button spinner doesn't flash back to its idle label during the route transition.
+- **Multi-device ("bulk") renewal — `/top-up/:imei`, added 2026-09-17.** Extends the SAME page rather than adding a route, because that URL is the landing point the native app opens (`track.navitag.com` `deviceSettings.vue` → `www.navitag.com/top-up/<imei>`) and is baked into installed builds. The check call now passes `?with_candidates=1`, which is purely additive: the API returns `renew_eligible`, `renew_tiers`, `candidates[]` (active, expiring within ±1 week of the anchor), `expired[]` (lapsed, any distance) and `bulk_max` (10, anchor included). Every multi-device block is gated on `hasOtherDevices`, so an owner with one device sees the page exactly as before.
+  - **One line item per device.** The storefront does not merge identical variants, so N ticked devices produce N line items at qty 1, each carrying its own `metadata.imei`. That is what lets the backend renew them independently — a single qty-N item would charge for N and renew one. `AddToCart` scales `value` and `num_items` with the count.
+  - **`renew_eligible: false`** hides the plan cards entirely (a model with no plans, or a device on a tier that isn't sold online).
+  - **Expiry preview is deliberately partial**: same-tier is computed exactly (append from `max(today, expiry)`); a tier CHANGE shows "calculated at checkout" instead of a number, because an upgrade rebases from today after converting unused time at the two tiers' price ratio — that needs live Medusa prices and belongs on the server. Wire it to the API's `renew-preview` endpoint when that ships.
 - **Resilient Country Detection**: `fetchCountryCode` (Cloudflare trace via `utils/ipCountry.ts`) retries (5s timeout × 3 attempts, 500ms backoff). On total failure, the page shows an inline retry card.
 - **`/plan-checkout/:cart_id`**: PayPal Card Fields (`pp_paypal_paypal`). Loads SDK with `currency = cart.currency_code`. Country dropdown is **prefilled from `basicStore.country` and locked** — set from the customer's account region. Same finalizing overlay + hard-failure modal pattern as `/shop/checkout`. Retry capped at 1.
   - **Diagnostics**: `cardFields.submit()` catch dumps every own-property of the PayPal SDK error plus a per-field `isValid/isEmpty/isPotentiallyValid/isFocused` snapshot, since PayPal errors stringify to bare codes (e.g. `"INVALID_NUMBER"`) and hide their `details[]` array. Friendly mappings cover `PAYER_CANNOT_PAY`, `INVALID_NUMBER`, `INVALID_EXPIRY`/`EXPIRED_CARD`, `INVALID_SECURITY_CODE`/`INVALID_CVV`, `CARD_TYPE_NOT_SUPPORTED` so customers see human copy instead of the raw enum.
@@ -106,6 +110,17 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 - **Query params survive client-side redirects.** `basicStore.runFirstEntryRedirect()` (regional redirect), the `[...slug].vue` catch-all 301, and the post-auth `navigateTo` in `login.vue` / `signup.vue` all forward `route.query` (+ hash). A bare path string drops the query, which silently killed `utm_*` and `fbclid` for any visitor whose geo-IP disagreed with the URL's region — `fbclid` is what seeds the `_fbc` cookie that both the pixel and the CAPI mirror need, so losing it degraded attribution. `signup.vue`'s `postAuthTarget()` strips the internal `return` / `intent` params before forwarding so they don't dangle on the destination.
 - Meta Pixel script (`fbevents.js`) is loaded unconditionally on page boot — **no consent gate, by explicit decision**. The product owner has accepted the PH DPA / GDPR / CCPA exposure in exchange for 100% event coverage. Do not add a consent gate without re-confirming this decision; the trade-off is intentional, not a missing feature.
 
+### Retail Partner Listing (`/partner-listing`)
+- Public, **unindexed** form for retailers who already stock Navitag to submit a storefront for the "where to buy" pages. Handed out as a link by the sales team.
+- **Four independent noindex layers**, because they fail differently: page `robots`/`googlebot` meta, an `X-Robots-Tag` response header from `routeRules`, a `Disallow` in `public/robots.txt`, and a `sitemap.exclude` entry.
+- **Bilingual field labels.** Every field shows its English label with the same label in the visitor's country language underneath — 35 languages, mapped from the country code `basicStore` already resolves (auth profile, else IP). English-speaking countries get one label. Dictionary + country map: `app/utils/partnerFormLocales.ts`; adding a language is 20 strings and a country mapping, nothing else. Weekday names come from `Intl`, not the dictionary.
+- **No placeholders anywhere**, by design — hints are persistent text under the control so they survive typing.
+- **Store location** uses the Google Maps JavaScript API with Places (New) autocomplete and a centre-pin map (pan the map, the pin follows), plus reverse geocoding to self-fill the address. Requires `GOOGLE_API_NAVITAG_COM_PUBLIC`; **without the key the field degrades to a paste-a-Google-Maps-link input** and the API parses coordinates out of the pasted URL, so nothing breaks before the key lands.
+- **Store hours are a 12-hour am/pm control, not `<input type="time">`.** The native picker's 12h-vs-24h rendering comes from the browser's locale and cannot be set from the page, so it was replaced with hour / minute / AM-PM selects. The model and the `TIME` column stay 24-hour — am/pm is presentation only, and the notification email renders it via `PartnerListing::clock12()`. Hours past midnight (`closes < opens`) are allowed and the email labels them "(next day)".
+- Components live in `app/components/partner/`: `PartnerField` (the label + control shell every field uses), `PartnerHours`, `PartnerLinks`, `PartnerMapPin`, `PartnerProofUpload`.
+- ✅ **Backend LIVE 2026-09-23** — all four tables applied and `POST /v1/partner-listing` deployed and verified end-to-end (row written, photo on disk, Brevo email with CC + attachment confirmed). See `DEPLOYMENT_DRIFT_LOG.md`.
+- ⚠️ **This page itself is NOT pushed yet**, and the Maps key needs a Vercel **redeploy** to take effect (build-time read). The key also rejects localhost until `http://localhost:3000/*` is in its HTTP-referrer allowlist — `*localhost*` is not a valid Google pattern.
+
 ### TODO
 
 #### Storefront
@@ -186,6 +201,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 | `/shop/order-complete/[order_id]` | No | Physical-order receipt |
 | `/test-products` | No | Medusa product test page (dev) |
 | `/links` | No | → `https://track.navitag.com/signup` |
+| `/partner-listing` | **No — 4 layers** | Retailer self-listing form → `POST /v1/partner-listing` |
 | `/*` (catch-all) | No | Custom 404 |
 
 ---
@@ -206,6 +222,12 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 ### Contact Endpoint
 - `POST /v1/contact` expects `application/x-www-form-urlencoded` (NOT JSON). `ContactForm.vue` sends `URLSearchParams`. Returns `{"status":"success"}` / `{"status":"error","message":"..."}`.
 
+### Partner Listing Endpoint
+- `POST /v1/partner-listing` expects **JSON** (not form-encoded like `/v1/contact`) — the body carries nested arrays for hours, links and base64 images.
+- Writes `partner_listings` + `partner_listing_hours` / `_links` / `_proofs`, then emails `info@navitag.com` via Brevo with **every unique address on the form CC'd** and the proof photos attached. Email is best-effort and never fails the request; the outcome lands in `partner_listings.email_status`.
+- Returns `{"status":"success","reference":"PL-XXXXXXXX","notified":true}`. A resubmit from the same `business_email` inside 90 s returns the ORIGINAL reference with `"duplicate":true` instead of creating a second listing.
+- Requires at least one proof image. Images are re-encoded to JPEG in the browser (≤1600px) before upload, which also strips EXIF GPS.
+
 ---
 
 ## Brand Colors
@@ -215,6 +237,15 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 | **Navitag Blue** | `#0076F5` | Primary, CTAs, links, headings |
 | **Navitag Orange** | `#F28C38` | Accent, highlights, badges |
 | **Navitag Background** | `#F7F4EF` | Theme background |
+
+---
+
+## Environment Variables
+
+| Variable | Used by | Notes |
+|---|---|---|
+| `NUXT_PUBLIC_PAYPAL_CLIENT_ID` | PayPal Card Fields | Public |
+| `GOOGLE_API_NAVITAG_COM_PUBLIC` | `/partner-listing` map picker | Public browser key. **Enable exactly three APIs**: Maps JavaScript API, Places API (New), Geocoding API. Restrict by HTTP referrer *and* to those three. Read at **build** time (not the `NUXT_PUBLIC_*` runtime override), so changing it in Vercel needs a redeploy. `nuxt dev` reads `.env`, not `.env.local` — use `nuxt dev --dotenv .env.local`. Blank → the map picker falls back to a link input. |
 
 ---
 

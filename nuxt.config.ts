@@ -42,6 +42,20 @@ export default defineNuxtConfig({
       // Optional: pin a localhost App Check debug token
       // (NUXT_PUBLIC_APPCHECK_DEBUG_TOKEN). Empty → SDK generates one in dev.
       appcheckDebugToken: '',
+      // Google Maps JavaScript API browser key, used only by the store-location
+      // picker on /partner-listing. PUBLIC by nature — it ships in the page like
+      // the keys above — so it must be restricted in Google Cloud by HTTP
+      // referrer AND to the three APIs it needs (Maps JavaScript, Places New,
+      // Geocoding). Empty → the picker degrades to a paste-a-Google-Maps-link
+      // input and nothing on the page breaks.
+      //
+      // Read from GOOGLE_API_NAVITAG_COM_PUBLIC explicitly rather than through
+      // Nuxt's automatic NUXT_PUBLIC_* override, because that mechanism only
+      // matches keys prefixed NUXT_PUBLIC_ and this one is not. That also means
+      // it is resolved at BUILD time, so changing it in Vercel needs a redeploy.
+      // Note `nuxt dev` reads .env, not .env.local — use `--dotenv .env.local`
+      // if the value lives there.
+      googleMapsKey: process.env.GOOGLE_API_NAVITAG_COM_PUBLIC || '',
     },
   },
 
@@ -54,6 +68,13 @@ export default defineNuxtConfig({
   routeRules: {
     '/shop': { redirect: { to: '/shop/product/track-1', statusCode: 301 } },
     '/distribution': { redirect: { to: '/shop/product/track-1', statusCode: 301 } },
+    // Retailer intake form — link-distributed, never to be indexed. The header
+    // is the layer that works on crawlers which never execute JS and therefore
+    // never see the page's own robots meta tag; robots.txt and the sitemap
+    // exclusion below are the other two.
+    '/partner-listing': {
+      headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet' },
+    },
   },
 
   sitemap: {
@@ -67,6 +88,7 @@ export default defineNuxtConfig({
       '/plan-checkout/**',
       '/renew-complete/**',
       '/top-up/**',
+      '/partner-listing',
     ],
     sources: [
       '/api/__sitemap__/articles',

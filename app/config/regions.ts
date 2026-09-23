@@ -86,6 +86,11 @@ export const UTILITY_PREFIXES = [
   '/links',
   '/shop',
   '/test-products',
+  // Retailer intake form. Flat at the root on purpose: it is handed out as a
+  // single link to shops in any country, and projecting it into /ph/ would
+  // break that link for everyone the sales team already sent it to. The form
+  // reads the visitor's country itself, to pick the secondary label language.
+  '/partner-listing',
 ]
 
 export function isUtilityPath(path: string): boolean {
