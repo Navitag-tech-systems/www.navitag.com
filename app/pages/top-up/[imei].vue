@@ -410,6 +410,12 @@ watch(previewKey, (key) => {
     previewFailed.value = false
     return
   }
+  // Drop the previous selection's dates at once so every line reads
+  // "estimating..." until this selection's response lands, and invalidate
+  // any request still in flight for the old selection.
+  previewSeq++
+  preview.value = {}
+  previewFailed.value = false
   previewLoading.value = true
   // Short debounce: ticking several devices in a row makes one request.
   previewTimer = setTimeout(() => fetchPreview(key), 250)
@@ -419,7 +425,10 @@ async function fetchPreview(key: string) {
   const seq = ++previewSeq
   const [tier, months, country, imeis] = key.split('|')
   const firebaseUser = auth.currentUser
-  if (!firebaseUser || !imeis) return
+  if (!firebaseUser || !imeis) {
+    previewLoading.value = false
+    return
+  }
   try {
     const idToken = await firebaseUser.getIdToken()
     const res = await $fetch<any>(`${UNIFIED_API_URL}/inventory/renew-preview`, {
