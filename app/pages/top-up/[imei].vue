@@ -55,6 +55,11 @@ const productsLoading = ref(false)
 const loading = ref(true)
 const error = ref('')
 const showLogin = ref(false)
+// Set when /inventory/check 404s for a signed-in user: the device exists on
+// another account (typically a track.navitag.com user landing here while a
+// different account is signed in on navitag.com). Offers "Switch Account".
+const notOwned = ref(false)
+const switchingAccount = ref(false)
 const isAuthenticated = computed(() => basic.isLoggedIn)
 const authChecked = computed(() => basic.authResolved)
 const ipCountryCode = computed(() => basic.country)
@@ -99,6 +104,7 @@ async function checkDevice() {
 
   loading.value = true
   error.value = ''
+  notOwned.value = false
   device.value = null
 
   try {
@@ -147,6 +153,7 @@ async function checkDevice() {
       }
     } else if (e?.response?.status === 404) {
       error.value = 'Device not found or not linked to your account.'
+      notOwned.value = true
     } else {
       error.value = e?.data?.error || e?.message || 'Failed to check device.'
     }
@@ -559,6 +566,24 @@ function onLoginSuccess() {
   showLogin.value = false
   checkDevice()
 }
+
+// Sign out the current account and reopen the login overlay; onLoginSuccess
+// then re-runs checkDevice() under the new account on this same page.
+async function switchAccount() {
+  switchingAccount.value = true
+  try {
+    await basic.logout()
+    // logout() clears the resolved country; re-resolve so the plan region
+    // and the location guard stay valid for the next account.
+    await basic.resolveCountry()
+    error.value = ''
+    notOwned.value = false
+    device.value = null
+    showLogin.value = true
+  } finally {
+    switchingAccount.value = false
+  }
+}
 </script>
 
 <template>
@@ -597,6 +622,18 @@ function onLoginSuccess() {
       <!-- Error -->
       <div v-if="error" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
         <i class="fas fa-times-circle mr-2"></i>{{ error }}
+        <div v-if="notOwned && isAuthenticated" class="mt-3">
+          <p v-if="basic.user?.email" class="text-xs text-red-600 mb-3">
+            Signed in as <strong>{{ basic.user.email }}</strong>
+          </p>
+          <button
+            class="px-5 py-2 rounded-xl bg-navitag-blue text-white font-semibold hover:bg-opacity-90 transition disabled:opacity-60"
+            :disabled="switchingAccount"
+            @click="switchAccount"
+          >
+            <i class="fas mr-2" :class="switchingAccount ? 'fa-spinner fa-spin' : 'fa-exchange-alt'"></i>Switch Account
+          </button>
+        </div>
       </div>
 
       <!-- Device Result -->
