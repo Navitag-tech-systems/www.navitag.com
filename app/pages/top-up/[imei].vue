@@ -18,6 +18,38 @@ const basic = useBasicStore()
 const { $fbq } = useNuxtApp()
 
 const device = ref<any>(null)
+
+// --- Multi-device ("bulk") renewal -----------------------------------------
+// This page is the landing point the NATIVE app opens
+// (track.navitag.com deviceSettings.vue -> www.navitag.com/top-up/<imei>), and
+// that URL is baked into installed builds. So bulk renewal is added HERE rather
+// than on a new route: an owner with one device sees exactly what they saw
+// before, because every block below renders only when the API returns others.
+//
+// `?with_candidates=1` is strictly additive on the response — the server already
+// splits the buckets and decides eligibility, so nothing here re-derives them:
+//   renew_eligible false -> the model sells no plans, or this device's own tier
+//                           is not one of them; purchase must not be offered
+//   renew_tiers          -> tiers that may be bought (unused here: the existing
+//                           plan cards already come from the model's category)
+//   candidates[]         -> ACTIVE stablemates expiring within ±1 week
+//   expired[]            -> lapsed ones, any distance, shown separately
+//   bulk_max             -> hard cap, anchor included
+type DeviceRow = {
+  imei: string
+  name?: string
+  model?: string
+  plan_level?: string
+  expiration?: string | null
+  actionable?: boolean
+}
+
+const candidates = ref<DeviceRow[]>([])
+const expired = ref<DeviceRow[]>([])
+const renewEligible = ref<boolean | null>(null)
+const bulkMax = ref(10)
+const selectedImeis = ref<Set<string>>(new Set())
+
 const products = ref<any[]>([])
 const productsLoading = ref(false)
 const loading = ref(true)
@@ -71,13 +103,14 @@ async function checkDevice() {
 
   try {
     const idToken = await firebaseUser.getIdToken()
-    const res = await $fetch<{ status: string; device: any; country: string | null }>(`${UNIFIED_API_URL}/inventory/check`, {
-      params: { imei: imei.value },
+    const res = await $fetch<any>(`${UNIFIED_API_URL}/inventory/check`, {
+      params: { imei: imei.value, with_candidates: 1 },
       headers: {
         Authorization: `Bearer ${idToken}`,
       },
     })
     device.value = res.device
+    applyBulkFields(res)
     if (res.country) userCountryCode.value = res.country
     if (res.device?.model) {
       fetchProducts(res.device.model)
@@ -95,13 +128,14 @@ async function checkDevice() {
     if (e?.response?.status === 401) {
       try {
         const freshToken = await firebaseUser.getIdToken(true)
-        const res = await $fetch<{ status: string; device: any; country: string | null }>(`${UNIFIED_API_URL}/inventory/check`, {
-          params: { imei: imei.value },
+        const res = await $fetch<any>(`${UNIFIED_API_URL}/inventory/check`, {
+          params: { imei: imei.value, with_candidates: 1 },
           headers: {
             Authorization: `Bearer ${freshToken}`,
           },
         })
         device.value = res.device
+        applyBulkFields(res)
         if (res.country) userCountryCode.value = res.country
         if (res.device?.model) {
           fetchProducts(res.device.model)
@@ -148,6 +182,16 @@ async function fetchProducts(model: string) {
   } finally {
     productsLoading.value = false
   }
+}
+
+function applyBulkFields(res: any) {
+  candidates.value = res.candidates || []
+  expired.value = res.expired || []
+  renewEligible.value = res.renew_eligible ?? null
+  bulkMax.value = res.bulk_max ?? 10
+  // The anchor is always in the cart and cannot be unticked: it is the device
+  // the owner opened. Everything else is opt-in.
+  selectedImeis.value = new Set([res.device?.imei].filter(Boolean))
 }
 
 const selectedVariants = ref<Record<string, string>>({})
@@ -245,6 +289,159 @@ function selectVariant(productId: string, variantId: string) {
   selectedVariants.value = { [productId]: variantId }
 }
 
+// --- Multi-device selection ------------------------------------------------
+// A row's display name follows the same rule as deviceName above: ref1 is the
+// name of record, and the "@@ ..." inventory marker is a shelf state, not a
+// name. Candidate rows arrive with `name` already resolved server-side by
+// DeviceNaming::displayNameSql(), so this only has to cover the anchor.
+function rowName(row: DeviceRow): string {
+  const n = String(row.name || '').trim()
+  if (!n || n.startsWith('@@')) return row.imei
+  return n
+}
+
+const anchorRow = computed<DeviceRow | null>(() => device.value
+  ? {
+      imei: device.value.imei,
+      name: deviceName.value,
+      model: device.value.model,
+      plan_level: currentTier.value,
+      expiration: device.value.expiration,
+      actionable: true,
+    }
+  : null)
+
+const activeRows = computed<DeviceRow[]>(() => {
+  const a = anchorRow.value
+  return a ? [a, ...candidates.value] : []
+})
+
+const allRows = computed<DeviceRow[]>(() => [...activeRows.value, ...expired.value])
+const selectedRows = computed(() => allRows.value.filter(r => selectedImeis.value.has(r.imei)))
+const selectedCount = computed(() => selectedRows.value.length)
+
+// Every block of multi-device UI hangs off this. With no other devices the page
+// renders exactly as it did before bulk renewal existed.
+const hasOtherDevices = computed(() => candidates.value.length > 0 || expired.value.length > 0)
+const atCap = computed(() => selectedImeis.value.size >= bulkMax.value)
+
+function isAnchorRow(row: DeviceRow): boolean {
+  return row.imei === device.value?.imei
+}
+
+function toggleDevice(row: DeviceRow) {
+  if (isAnchorRow(row)) return
+  const next = new Set(selectedImeis.value)
+  if (next.has(row.imei)) next.delete(row.imei)
+  else {
+    if (next.size >= bulkMax.value) return
+    next.add(row.imei)
+  }
+  selectedImeis.value = next
+}
+
+// The tier and duration currently chosen, read back off the selected variant so
+// the existing plan cards stay the single place a target is picked.
+const chosen = computed(() => {
+  const [productId, variantId] = Object.entries(selectedVariants.value)[0] || []
+  if (!productId || !variantId) return null
+  const plan = plans.value.find(p => p.id === productId)
+  const variant = plan?.variants?.find((v: any) => v.id === variantId)
+  if (!plan || !variant) return null
+  const m = /(\d+)\s*month/i.exec(String(variant.title || ''))
+  return {
+    tier: String(plan.tier).toLowerCase(),
+    months: m ? Number(m[1]) : 0,
+    variant,
+    amount: variant?.calculated_price?.calculated_amount ?? null,
+    currency: (variant?.calculated_price?.currency_code || 'PHP').toUpperCase(),
+  }
+})
+
+const totalAmount = computed(() => {
+  const c = chosen.value
+  return c?.amount == null ? null : c.amount * selectedCount.value
+})
+
+function money(v: number | null, currency: string): string {
+  if (v == null) return '—'
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(v)
+}
+
+// --- Per-device expiry preview ---------------------------------------------
+// GET /inventory/renew-preview runs the SAME PlanExpiry code the fulfilment
+// write runs, so what is shown here is what the device will get. Nothing is
+// computed in the browser: a same-tier renewal APPENDS from the later of today
+// and the current expiry, but a tier CHANGE rebases from today after converting
+// the remaining paid time at the price ratio, and a device with a long runway
+// can land EARLIER than it started. That needs live prices and the owner's
+// timezone, which only the server has.
+//
+// `country` is the one the cart will carry as metadata.country_code -- the
+// webhook prefers it for region and timezone, so the preview must use it too.
+type Preview = { day: string; mode: 'renew' | 'change' }
+
+const preview = ref<Record<string, Preview>>({})
+const previewLoading = ref(false)
+const previewFailed = ref(false)
+let previewSeq = 0
+let previewTimer: ReturnType<typeof setTimeout> | null = null
+
+const previewKey = computed(() => {
+  const c = chosen.value
+  if (!c || !c.months || !device.value) return ''
+  const imeis = allRows.value.map(r => r.imei).filter(i => selectedImeis.value.has(i))
+  return [c.tier, c.months, countryCode.value || '', imeis.join(',')].join('|')
+})
+
+watch(previewKey, (key) => {
+  if (previewTimer) clearTimeout(previewTimer)
+  if (!key) {
+    previewSeq++
+    preview.value = {}
+    previewLoading.value = false
+    previewFailed.value = false
+    return
+  }
+  previewLoading.value = true
+  // Short debounce: ticking several devices in a row makes one request.
+  previewTimer = setTimeout(() => fetchPreview(key), 250)
+})
+
+async function fetchPreview(key: string) {
+  const seq = ++previewSeq
+  const [tier, months, country, imeis] = key.split('|')
+  const firebaseUser = auth.currentUser
+  if (!firebaseUser || !imeis) return
+  try {
+    const idToken = await firebaseUser.getIdToken()
+    const res = await $fetch<any>(`${UNIFIED_API_URL}/inventory/renew-preview`, {
+      params: { imeis, tier, months, ...(country ? { country } : {}) },
+      headers: { Authorization: `Bearer ${idToken}` },
+    })
+    if (seq !== previewSeq) return // a newer selection superseded this one
+    const next: Record<string, Preview> = {}
+    for (const d of res.devices || []) {
+      next[d.imei] = { day: d.new_expiration_day, mode: d.mode }
+    }
+    preview.value = next
+    previewFailed.value = false
+  } catch {
+    if (seq !== previewSeq) return
+    // Not fatal: the webhook is the authority and still applies the right
+    // date. The row just says it could not be estimated.
+    preview.value = {}
+    previewFailed.value = true
+  } finally {
+    if (seq === previewSeq) previewLoading.value = false
+  }
+}
+
+function previewFor(imeiValue: string): string | null {
+  const p = preview.value[imeiValue]
+  return p?.day ? formatExpiration(p.day) : null
+}
+
 async function buyPlan(productId: string) {
   const variantId = selectedVariants.value[productId]
   if (!variantId) return
@@ -287,22 +484,44 @@ async function buyPlan(productId: string) {
     })
     const cartId = cartRes.cart.id
 
-    // 3. Add line item with IMEI metadata
-    await medusaFetch(`/store/carts/${cartId}/line-items`, {
-      method: 'POST',
-      body: {
-        variant_id: variantId,
-        quantity: 1,
-        // ref1 is the owner-assigned device name (device_inventory.ref1, kept in
-        // step with Traccar by Device::update). It is carried on the line item so
-        // the downstream checkout + completion pages can name the device without
-        // an authenticated /inventory/check call -- those pages authenticate with
-        // the publishable key only. renew-complete already read metadata.ref1;
-        // nothing had ever written it, so it always fell back to the plan's
-        // product title.
-        metadata: { imei: imei.value, ref1: deviceName.value },
-      },
-    })
+    // 3. ONE LINE ITEM PER SELECTED DEVICE, each carrying its own IMEI.
+    //
+    // The storefront does NOT merge identical variants, so N devices give N line
+    // items at quantity 1 — which is exactly what lets the backend renew them
+    // independently, because it resolves the target device per line item.
+    // Collapsing them into a single quantity-N item would charge for N and renew
+    // one. For a single device this is the same one call it always was.
+    //
+    // ref1 is the owner-assigned device name (device_inventory.ref1, kept in
+    // step with Traccar by Device::update). It is carried on the line item so
+    // the downstream checkout + completion pages can name the device without
+    // an authenticated /inventory/check call -- those pages authenticate with
+    // the publishable key only. renew-complete already read metadata.ref1;
+    // nothing had ever written it, so it always fell back to the plan's
+    // product title.
+    const rows = selectedRows.value.length ? selectedRows.value : [{ imei: imei.value, name: deviceName.value }]
+    let lastCart: any = null
+    for (const row of rows) {
+      const added = await medusaFetch<{ cart: any }>(`/store/carts/${cartId}/line-items`, {
+        method: 'POST',
+        body: {
+          variant_id: variantId,
+          quantity: 1,
+          metadata: { imei: row.imei, ref1: rowName(row as DeviceRow) },
+        },
+      })
+      lastCart = added?.cart ?? lastCart
+    }
+
+    // The cart must hold exactly one item per selected device before checkout.
+    // A failed add throws above; this catches the quieter case of an add that
+    // returned but did not land, which would charge for fewer devices than the
+    // owner ticked. The abandoned cart is harmless -- nothing has been paid.
+    const cartImeis = (lastCart?.items || []).map((i: any) => i?.metadata?.imei).filter(Boolean).sort()
+    const wantImeis = rows.map(r => r.imei).sort()
+    if (cartImeis.length !== wantImeis.length || cartImeis.some((v: string, i: number) => v !== wantImeis[i])) {
+      throw new Error('Not every device could be added to the cart. Please try again.')
+    }
 
     // 4. Add digital delivery shipping method
     await medusaFetch(`/store/carts/${cartId}/shipping-methods`, {
@@ -318,9 +537,11 @@ async function buyPlan(productId: string) {
       content_ids: [variantId],
       content_type: 'data_plan',
       content_name: product?.title || undefined,
-      value: calc?.calculated_amount ?? 0,
+      // Both scale with the cart: a 3-device renewal is 3 items at 3x the value,
+      // and reporting 1 would understate every multi-device purchase.
+      value: (calc?.calculated_amount ?? 0) * rows.length,
       currency: (calc?.currency_code || 'USD').toUpperCase(),
-      num_items: 1,
+      num_items: rows.length,
       audience: 'b2c',
     })
 
@@ -386,12 +607,123 @@ function onLoginSuccess() {
             <div>Device Unique ID: <span class="font-mono font-medium text-gray-700">{{ device.imei }}</span></div>
             <div>Plan: <span class="font-semibold" :class="currentTier === 'pro' ? 'text-navitag-blue' : 'text-gray-700'">{{ currentTierLabel }}</span></div>
             <div>Expiration: <span class="font-semibold" :class="device.expiration ? 'text-gray-900' : 'text-gray-400'">{{ device.expiration ? formatExpiration(device.expiration) : '—' }}</span></div>
+            <!-- Single-device owners have no device list, so the estimate for the
+                 chosen plan shows here; with a list it shows on this device's row. -->
+            <div v-if="chosen && !hasOtherDevices">
+              New expiration:
+              <span v-if="previewFor(device.imei)" class="font-semibold text-navitag-blue">{{ previewFor(device.imei) }}</span>
+              <span v-else-if="previewLoading" class="text-gray-400">estimating&hellip;</span>
+              <span v-else class="text-gray-400">could not estimate</span>
+            </div>
           </div>
         </div>
       </div>
 
+      <!-- Other devices on the same plan. Renders ONLY when the API returned
+           some, so a single-device owner sees the page exactly as before. -->
+      <div v-if="device && hasOtherDevices" class="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+          <div>
+            <h2 class="font-bold text-gray-950">Renew more devices together</h2>
+            <p class="text-xs text-gray-500 mt-0.5">One plan is applied to every device you tick.</p>
+          </div>
+          <span class="text-xs shrink-0" :class="atCap ? 'text-navitag-orange font-semibold' : 'text-gray-400'">
+            {{ selectedCount }} of {{ bulkMax }}
+          </span>
+        </div>
+
+        <ul>
+          <li
+            v-for="row in activeRows"
+            :key="row.imei"
+            class="px-6 py-3 border-b border-gray-50 flex items-center gap-3"
+            :class="isAnchorRow(row) ? 'bg-gray-50/60' : 'cursor-pointer hover:bg-gray-50/40'"
+            @click="toggleDevice(row)"
+          >
+            <i
+              class="fa-square-check w-4 text-center"
+              :class="selectedImeis.has(row.imei) ? 'fas text-navitag-blue' : 'far text-gray-300'"
+            ></i>
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-gray-900 text-sm truncate">
+                {{ rowName(row) }}
+                <span v-if="isAnchorRow(row)" class="ml-1 text-[10px] uppercase tracking-wide text-gray-400">this device</span>
+              </div>
+              <div class="text-[11px] text-gray-500 font-mono">{{ row.imei }}</div>
+            </div>
+            <div class="text-right text-[11px] shrink-0">
+              <div class="text-gray-500">{{ row.expiration ? formatExpiration(row.expiration) : '—' }}</div>
+              <div
+                v-if="selectedImeis.has(row.imei) && chosen"
+                class="font-semibold"
+                :class="previewFor(row.imei) ? 'text-navitag-blue' : 'text-gray-400'"
+              >
+                <template v-if="previewFor(row.imei)">&rarr; {{ previewFor(row.imei) }}</template>
+                <template v-else-if="previewLoading">&rarr; estimating&hellip;</template>
+                <template v-else>&rarr; could not estimate</template>
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <!-- Lapsed devices get their own section: renewing one restarts its term
+             from today rather than extending it, which is worth saying plainly. -->
+        <template v-if="expired.length">
+          <div class="px-6 py-3 bg-gray-50/70 border-y border-gray-100">
+            <h3 class="text-xs font-bold uppercase tracking-wide text-gray-500">Expired</h3>
+            <p class="text-[11px] text-gray-500 mt-0.5">These have lapsed — renewing restarts the term from today.</p>
+          </div>
+          <ul>
+            <li
+              v-for="row in expired"
+              :key="row.imei"
+              class="px-6 py-3 border-b border-gray-50 flex items-center gap-3 cursor-pointer hover:bg-gray-50/40"
+              @click="toggleDevice(row)"
+            >
+              <i
+                class="fa-square-check w-4 text-center"
+                :class="selectedImeis.has(row.imei) ? 'fas text-navitag-blue' : 'far text-gray-300'"
+              ></i>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-gray-900 text-sm truncate">{{ rowName(row) }}</div>
+                <div class="text-[11px] text-gray-500 font-mono">{{ row.imei }}</div>
+              </div>
+              <div class="text-right text-[11px] shrink-0">
+                <div class="text-navitag-orange font-medium">
+                  {{ row.expiration ? formatExpiration(row.expiration) : 'No plan' }}
+                </div>
+                <div
+                  v-if="selectedImeis.has(row.imei) && chosen"
+                  class="font-semibold"
+                  :class="previewFor(row.imei) ? 'text-navitag-blue' : 'text-gray-400'"
+                >
+                  <template v-if="previewFor(row.imei)">&rarr; {{ previewFor(row.imei) }}</template>
+                  <template v-else-if="previewLoading">&rarr; estimating&hellip;</template>
+                  <template v-else>&rarr; could not estimate</template>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </template>
+
+        <div v-if="chosen && selectedCount > 1" class="px-6 py-4 flex items-baseline justify-between">
+          <span class="text-sm text-gray-600">{{ selectedCount }} devices</span>
+          <span class="text-lg font-extrabold text-gray-950">{{ money(totalAmount, chosen.currency) }}</span>
+        </div>
+      </div>
+
+      <!-- The server says this device cannot be topped up at all. -->
+      <div v-if="device && renewEligible === false" class="mt-10 p-6 bg-white rounded-2xl border border-gray-100">
+        <h2 class="font-bold text-gray-950 mb-2">
+          <i class="fas fa-circle-info text-gray-400 mr-2"></i>Renewal is not available for this device
+        </h2>
+        <p class="text-sm text-gray-600">
+          Please contact support to renew your <strong>{{ device.model }}</strong>.
+        </p>
+      </div>
+
       <!-- Renewal Plans -->
-      <div v-if="device" class="mt-10">
+      <div v-if="device && renewEligible !== false" class="mt-10">
         <h2 class="text-xl font-extrabold text-gray-950 mb-2">Choose a Data Plan</h2>
         <p class="text-sm text-gray-500">Select a plan to renew connectivity for your <strong>{{ device.model }}</strong>.</p>
         <p class="text-sm text-gray-500 mb-6">Changing your plan will convert all of your unused allocation to the new tier. This will be added on top of the top-up purchased.</p>
@@ -484,6 +816,7 @@ function onLoginSuccess() {
                 </span>
                 <span v-else>
                   {{ isCurrentTier(plan.tier) ? "Top-up Now" : "Change Plan" }}
+                  <template v-if="selectedCount > 1"> &middot; {{ selectedCount }} devices</template>
                 </span>
               </button>
             </div>

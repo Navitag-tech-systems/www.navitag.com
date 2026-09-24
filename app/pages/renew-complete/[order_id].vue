@@ -41,17 +41,17 @@ async function fetchOrder() {
   }
 }
 
-const lineItem = computed(() => order.value?.items?.[0] || null)
-const imei = computed(() => lineItem.value?.metadata?.imei || '—')
+// One line item per device: a multi-device top-up adds N items at quantity 1,
+// each carrying its own metadata.imei/ref1.
+const lineItems = computed<any[]>(() => order.value?.items || [])
+
 // metadata.ref1 is the owner-assigned device name, stamped onto the line item
 // when the cart is built (top-up/[imei].vue). Orders placed BEFORE that change
 // carry no ref1, so the product-title fallback stays for them -- but it names
 // the plan, not the device, so prefer the IMEI when we have one.
-const deviceName = computed(() =>
-  lineItem.value?.metadata?.ref1
-  || lineItem.value?.metadata?.imei
-  || lineItem.value?.product_title
-  || '—')
+function itemDeviceName(item: any): string {
+  return item?.metadata?.ref1 || item?.metadata?.imei || item?.product_title || '—'
+}
 
 // The payment method used to be hardcoded to "Card via PayPal", which
 // mislabelled every GCash / Maya order once Xendit went live (both e-wallet
@@ -139,28 +139,32 @@ function formatDate(dateStr: string) {
         <!-- Device & Plan -->
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
           <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
-            <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Device & Plan</h2>
+            <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">
+              {{ lineItems.length > 1 ? `Devices & Plan (${lineItems.length})` : 'Device & Plan' }}
+            </h2>
           </div>
-          <div class="px-6 py-5">
-            <div class="flex items-start gap-4">
-              <div class="w-12 h-12 rounded-full bg-navitag-blue bg-opacity-10 flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-satellite-dish text-navitag-blue fa-lg"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="font-bold text-gray-950">{{ deviceName }}</p>
-                <p class="text-xs text-gray-400 mt-0.5 font-mono">IMEI: {{ imei }}</p>
-              </div>
-            </div>
-
-            <div v-if="lineItem" class="mt-4 pt-4 border-t border-gray-100">
-              <div class="flex justify-between items-start">
-                <div>
-                  <p class="font-semibold text-gray-900 text-sm">{{ lineItem.product_title || lineItem.title }}</p>
-                  <p class="text-xs text-gray-500 mt-0.5">{{ lineItem.variant_title || '' }}</p>
+          <div class="divide-y divide-gray-100">
+            <div v-for="item in lineItems" :key="item.id" class="px-6 py-5">
+              <div class="flex items-start gap-4">
+                <div class="w-12 h-12 rounded-full bg-navitag-blue bg-opacity-10 flex items-center justify-center flex-shrink-0">
+                  <i class="fas fa-satellite-dish text-navitag-blue fa-lg"></i>
                 </div>
-                <span class="font-bold text-gray-900 text-sm">
-                  {{ formatPrice(lineItem.unit_price, order.currency_code) }}
-                </span>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-gray-950">{{ itemDeviceName(item) }}</p>
+                  <p class="text-xs text-gray-400 mt-0.5 font-mono">IMEI: {{ item.metadata?.imei || '—' }}</p>
+                </div>
+              </div>
+
+              <div class="mt-4 pt-4 border-t border-gray-100">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <p class="font-semibold text-gray-900 text-sm">{{ item.product_title || item.title }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ item.variant_title || '' }}</p>
+                  </div>
+                  <span class="font-bold text-gray-900 text-sm">
+                    {{ formatPrice(item.unit_price * (item.quantity || 1), order.currency_code) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -238,7 +242,8 @@ function formatDate(dateStr: string) {
               <div class="w-6 h-6 rounded-full bg-navitag-blue text-white flex items-center justify-center flex-shrink-0 text-xs mt-0.5">
                 <i class="fas fa-sync text-[10px]"></i>
               </div>
-              <p class="text-sm text-gray-700">Your data plan is being activated on your <strong>{{ deviceName }}</strong>.</p>
+              <p v-if="lineItems.length > 1" class="text-sm text-gray-700">Your data plan is being activated on your <strong>{{ lineItems.length }} devices</strong>.</p>
+              <p v-else class="text-sm text-gray-700">Your data plan is being activated on your <strong>{{ itemDeviceName(lineItems[0]) }}</strong>.</p>
             </div>
             <div class="flex items-start gap-3">
               <div class="w-6 h-6 rounded-full bg-gray-300 text-white flex items-center justify-center flex-shrink-0 text-xs mt-0.5">

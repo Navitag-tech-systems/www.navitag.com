@@ -178,11 +178,15 @@ async function fetchCart() {
   }
 }
 
-const lineItem = computed(() => cart.value?.items?.[0] || null)
+// One line item per device: a multi-device top-up (top-up/[imei].vue) adds N
+// items at quantity 1, each carrying its own metadata.imei/ref1. The summary
+// lists every one; `lineItem`/`imei` stay as the FIRST device, which is what the
+// "back to top-up" link returns to.
+const lineItems = computed<any[]>(() => cart.value?.items || [])
+const lineItem = computed(() => lineItems.value[0] || null)
 const imei = computed(() => lineItem.value?.metadata?.imei || '—')
-// Owner-assigned device name, carried on the line item by top-up/[imei].vue.
+// Each item's device name is its metadata.ref1, carried by top-up/[imei].vue.
 // Absent on carts built before that change, in which case only the IMEI shows.
-const deviceName = computed(() => lineItem.value?.metadata?.ref1 || '')
 
 // Payment-method picker (PHP). Card mounts the PayPal form; wallets redirect.
 function selectMethod(method: 'gcash' | 'maya' | 'card') {
@@ -679,16 +683,16 @@ async function dismissFailure() {
             <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Order Summary</h2>
           </div>
           <div class="divide-y divide-gray-100">
-            <div v-if="lineItem" class="px-6 py-4">
+            <div v-for="item in lineItems" :key="item.id" class="px-6 py-4">
               <div class="flex justify-between items-start">
                 <div class="flex-1">
-                  <p class="font-semibold text-gray-900 text-sm">{{ lineItem.product_title || lineItem.title }}</p>
-                  <p class="text-xs text-gray-500 mt-0.5">{{ lineItem.variant_title || '' }}</p>
-                  <p v-if="deviceName" class="text-xs text-gray-500 mt-1">Device: <span class="font-medium text-gray-700">{{ deviceName }}</span></p>
-                  <p class="text-xs text-gray-400 mt-1">IMEI: <span class="font-mono">{{ imei }}</span></p>
+                  <p class="font-semibold text-gray-900 text-sm">{{ item.product_title || item.title }}</p>
+                  <p class="text-xs text-gray-500 mt-0.5">{{ item.variant_title || '' }}</p>
+                  <p v-if="item.metadata?.ref1" class="text-xs text-gray-500 mt-1">Device: <span class="font-medium text-gray-700">{{ item.metadata.ref1 }}</span></p>
+                  <p class="text-xs text-gray-400 mt-1">IMEI: <span class="font-mono">{{ item.metadata?.imei || '—' }}</span></p>
                 </div>
                 <span class="font-bold text-gray-900 text-sm">
-                  {{ formatPrice(lineItem.unit_price, cart.currency_code) }}
+                  {{ formatPrice(item.unit_price * (item.quantity || 1), cart.currency_code) }}
                 </span>
               </div>
             </div>
