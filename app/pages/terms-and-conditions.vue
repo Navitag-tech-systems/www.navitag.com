@@ -169,8 +169,8 @@ if (import.meta.client) {
     </p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-6">
       <li><strong>Contact form:</strong> <NuxtLink to="/contact" class="text-navitag-blue hover:underline">navitag.com/contact</NuxtLink></li>
-      <li><strong>Email:</strong> <a href="mailto:support@navitag.com" class="text-navitag-blue hover:underline">support@navitag.com</a></li>
-      <li><strong>Philippines (phone / Viber):</strong> <a href="tel:+639176388402" class="text-navitag-blue hover:underline">+63 917 638 8402</a></li>
+      <li><strong>Email:</strong> <a href="mailto:info@navitag.com" class="text-navitag-blue hover:underline">info@navitag.com</a></li>
+      <li><strong>Phone / Viber:</strong> <a href="tel:+639176388402" class="text-navitag-blue hover:underline">+63 917 638 8402</a></li>
     </ul>
   </div>
 </template>

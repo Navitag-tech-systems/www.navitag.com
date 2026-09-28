@@ -150,7 +150,12 @@ if (import.meta.client) {
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">10. Contact Us</h2>
     <p class="text-gray-700 leading-relaxed mb-6">
-      If you have any questions about this Privacy Policy or our data practices, please <NuxtLink to="/contact" class="text-navitag-blue hover:underline">contact us</NuxtLink>.
+      If you have any questions about this Privacy Policy or our data practices, or want to exercise your privacy rights:
     </p>
+    <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-6">
+      <li><strong>Contact form:</strong> <NuxtLink to="/contact" class="text-navitag-blue hover:underline">navitag.com/contact</NuxtLink></li>
+      <li><strong>Email:</strong> <a href="mailto:info@navitag.com" class="text-navitag-blue hover:underline">info@navitag.com</a></li>
+      <li><strong>Phone / Viber:</strong> <a href="tel:+639176388402" class="text-navitag-blue hover:underline">+63 917 638 8402</a></li>
+    </ul>
   </div>
 </template>

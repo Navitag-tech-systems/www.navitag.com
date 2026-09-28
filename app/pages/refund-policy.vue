@@ -104,7 +104,15 @@ if (import.meta.client) {
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">9. Contact Us</h2>
     <p class="text-gray-700 leading-relaxed mb-6">
-      Questions about this policy or an existing request: <NuxtLink to="/contact" class="text-navitag-blue hover:underline">contact us</NuxtLink>. See also our <NuxtLink to="/privacy-policy" class="text-navitag-blue hover:underline">Privacy Policy</NuxtLink> for how payment information is handled.
+      Questions about this policy or an existing request:
+    </p>
+    <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-6">
+      <li><strong>Contact form:</strong> <NuxtLink to="/contact" class="text-navitag-blue hover:underline">navitag.com/contact</NuxtLink></li>
+      <li><strong>Email:</strong> <a href="mailto:info@navitag.com" class="text-navitag-blue hover:underline">info@navitag.com</a></li>
+      <li><strong>Phone / Viber:</strong> <a href="tel:+639176388402" class="text-navitag-blue hover:underline">+63 917 638 8402</a></li>
+    </ul>
+    <p class="text-gray-700 leading-relaxed mb-6">
+      See also our <NuxtLink to="/privacy-policy" class="text-navitag-blue hover:underline">Privacy Policy</NuxtLink> for how payment information is handled, and our <NuxtLink to="/terms-and-conditions" class="text-navitag-blue hover:underline">Terms and Conditions</NuxtLink>.
     </p>
   </div>
 </template>
