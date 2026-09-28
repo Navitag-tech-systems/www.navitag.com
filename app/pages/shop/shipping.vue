@@ -719,6 +719,7 @@ useSeoMeta({
             </button>
           </div>
           <p v-if="promoError" class="mt-1.5 text-[12px] text-red-600">{{ promoError }}</p>
+          <p v-else-if="promoApplied" class="mt-1.5 text-[12px] text-green-600">Promo code applied.</p>
         </fieldset>
 
         <!-- Charges breakdown -->

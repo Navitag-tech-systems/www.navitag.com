@@ -263,13 +263,17 @@ async function initPayment() {
   paymentReady.value = false
 
   try {
-    // 1. Patch email + firebase_uid metadata onto the cart
+    // 1. Patch email + firebase_uid metadata onto the cart. Medusa replaces
+    // the whole metadata object, so merge onto what the cart already has.
     const firebaseUid = auth.currentUser?.uid
     await medusaFetch(`/store/carts/${cartId.value}`, {
       method: 'POST',
       body: {
         email: email.value.trim(),
-        ...(firebaseUid ? { metadata: { firebase_uid: firebaseUid } } : {}),
+        metadata: {
+          ...(cart.value?.metadata || {}),
+          ...(firebaseUid ? { firebase_uid: firebaseUid } : {}),
+        },
       },
     })
 
@@ -433,16 +437,21 @@ async function runComplete(paypalOrderId?: string) {
   try {
     const { readFbCookies } = await import('~/utils/metaUserData')
     const { fbp, fbc } = readFbCookies()
-    await cartStore.updateCart({
-      metadata: {
-        // Preserve any existing metadata keys — Medusa replaces the whole
-        // object so stash the merge upstream if more fields land here.
-        ...(cart.value?.metadata || {}),
-        meta_purchase_event_id: purchaseEventId,
-        meta_fbp: fbp || undefined,
-        meta_fbc: fbc || undefined,
-        meta_event_source_url: typeof window !== 'undefined' ? window.location.href : undefined,
-        meta_client_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+    // Preserve existing metadata keys — Medusa replaces the whole object.
+    // cart.value predates initPayment's firebase_uid patch, so re-add it.
+    const firebaseUid = auth.currentUser?.uid
+    await medusaFetch(`/store/carts/${cartId.value}`, {
+      method: 'POST',
+      body: {
+        metadata: {
+          ...(cart.value?.metadata || {}),
+          ...(firebaseUid ? { firebase_uid: firebaseUid } : {}),
+          meta_purchase_event_id: purchaseEventId,
+          meta_fbp: fbp || undefined,
+          meta_fbc: fbc || undefined,
+          meta_event_source_url: typeof window !== 'undefined' ? window.location.href : undefined,
+          meta_client_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+        },
       },
     })
   }
