@@ -34,7 +34,7 @@ if (import.meta.client) {
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">1. Eligibility and Your Account</h2>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-6">
       <li>You must be at least 18 years old, or the age of majority where you live, to buy from us. If you buy on behalf of a company, you confirm you are authorised to bind it to these Terms.</li>
-      <li>An account is required to buy plans and devices and to use the app. You can sign up with an email address and password, Google Sign-In or Sign in with Apple.</li>
+      <li>An account is required to buy plans and devices and to use the app. You can sign up with an email address and password or a supported third-party sign-in provider.</li>
       <li>Keep your account details accurate and your login secure. You are responsible for activity on your account, including actions taken by people you give shared access to your devices.</li>
       <li>Tell us promptly through our <NuxtLink to="/contact" class="text-navitag-blue hover:underline">contact page</NuxtLink> if you believe your account has been accessed without your permission.</li>
     </ul>
@@ -145,7 +145,7 @@ if (import.meta.client) {
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">13. Third-Party Services</h2>
     <p class="text-gray-700 leading-relaxed mb-6">
-      The Services rely on third parties, including payment processors (Xendit, PayPal), app stores (Apple App Store, Google Play), marketplaces (Shopee, Lazada), sign-in providers (Google, Apple), mobile network operators and couriers. Your use of their services is also subject to their own terms and policies.
+      The Services rely on third parties, including payment processors (Xendit, PayPal), app stores, marketplaces (Shopee, Lazada), sign-in providers, technology service providers, mobile network operators and couriers. Your use of their services is also subject to their own terms and policies.
     </p>
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">14. Governing Law and Disputes</h2>

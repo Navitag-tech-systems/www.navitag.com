@@ -30,16 +30,16 @@ if (import.meta.client) {
       <strong>Account &amp; Profile Information.</strong> When you create an account, we collect a limited set of information depending on how you sign up:
     </p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">
-      <li><strong>Name</strong> — as provided by your Google or Apple account, or as you enter it.</li>
-      <li><strong>Email Address</strong> — used to create and identify your user profile. If you sign in with Apple and choose "Hide My Email", we receive an anonymized Apple private-relay address instead of your real email.</li>
+      <li><strong>Name</strong> — as provided by the sign-in provider you choose, or as you enter it.</li>
+      <li><strong>Email Address</strong> — used to create and identify your user profile. If your sign-in provider lets you hide your email address, we receive the anonymized relay address it provides instead of your real email.</li>
       <li><strong>Phone Number</strong> — only if you choose to add one to your profile.</li>
     </ul>
     <p class="text-gray-700 leading-relaxed mb-6">
-      You can create an account using <strong>Google Sign-In</strong>, <strong>Sign in with Apple</strong>, or by registering directly with an <strong>email address and password</strong>.
+      You can create an account using a supported <strong>third-party sign-in provider</strong>, or by registering directly with an <strong>email address and password</strong>.
     </p>
 
     <p class="text-gray-700 leading-relaxed mb-6">
-      <strong>Authentication Data &amp; Account Identifier.</strong> We use Firebase Authentication to securely manage your login sessions and protect your account. Each account is assigned a unique user identifier (a Firebase User ID), which we use to identify you across the App and our backend services, and which is also associated with your usage and analytics data.
+      <strong>Authentication Data &amp; Account Identifier.</strong> We use a secure authentication service to manage your login sessions and protect your account. Each account is assigned a unique user identifier, which we use to identify you across the App and our backend services, and which is also associated with your usage and analytics data.
     </p>
 
     <p class="text-gray-700 leading-relaxed mb-6">
@@ -47,7 +47,7 @@ if (import.meta.client) {
     </p>
 
     <p class="text-gray-700 leading-relaxed mb-6">
-      <strong>Usage &amp; Analytics Data.</strong> We use Firebase Analytics to collect information about how you interact with the App — such as screens viewed, features used, and general usage and diagnostic events — to understand and improve the App. We do <strong>not</strong> collect an advertising identifier (Apple IDFA or Google Advertising ID), and we do <strong>not</strong> use this data to track you across other companies' apps or websites.
+      <strong>Usage &amp; Analytics Data.</strong> We use an analytics service to collect information about how you interact with the App — such as screens viewed, features used, and general usage and diagnostic events — to understand and improve the App. We do <strong>not</strong> collect your device's advertising identifier, and we do <strong>not</strong> use this data to track you across other companies' apps or websites.
     </p>
 
     <p class="text-gray-700 leading-relaxed mb-6">
@@ -93,9 +93,8 @@ if (import.meta.client) {
       We do <strong>not</strong> sell your personal data, and we do <strong>not</strong> share it for cross-app or cross-site advertising or tracking. We only share information with service providers necessary for the App's core functionality:
     </p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-6">
-      <li><strong>Firebase (Google)</strong> — secure authentication, push notification delivery (Firebase Cloud Messaging), analytics, and encrypted data storage.</li>
-      <li><strong>Google Sign-In</strong> — to facilitate Single Sign-On when you choose to sign in with Google.</li>
-      <li><strong>Sign in with Apple</strong> — to facilitate Single Sign-On when you choose to sign in with Apple.</li>
+      <li><strong>Technology service providers</strong> — secure authentication, push notification delivery, analytics, and encrypted data storage.</li>
+      <li><strong>Sign-in providers</strong> — to verify your identity when you choose to sign in with a third-party account.</li>
       <li><strong>Xendit</strong> — payment processing for card and e-wallet (GCash, Maya) purchases made in the Philippines. We share your name, email address, phone number, billing details, the order amount and description, and a transaction reference so Xendit can authorise the payment, screen for fraud and settle the funds.</li>
       <li><strong>PayPal</strong> — payment processing for card purchases made through PayPal's hosted card fields, with the same order details.</li>
       <li><strong>Delivery partners</strong> — for physical products, your name, phone number and shipping address are shared with the courier that delivers the order.</li>
@@ -116,8 +115,7 @@ if (import.meta.client) {
     <p class="text-gray-700 leading-relaxed mb-4">We retain your information for as long as your account is active. Records of purchases and payments (order details, receipts, payment references and refund records — never full card details) are kept after account deletion for as long as tax, accounting, anti-fraud and chargeback rules require, and are then deleted. To delete your data:</p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-6">
       <li><strong>In-App:</strong> Navigate to <strong>Account &gt; Delete Account</strong>. This permanently deletes your account and associated personal data.</li>
-      <li><strong>Revoke Google access:</strong> Visit your Google Account at <a href="https://myaccount.google.com/permissions" class="text-navitag-blue hover:underline">myaccount.google.com/permissions</a> and remove Navitag Track.</li>
-      <li><strong>Revoke Apple access:</strong> On your device, go to <strong>Settings &gt; [your name] &gt; Sign in with Apple</strong>, select Navitag Track, and choose <strong>Stop Using Apple ID</strong>.</li>
+      <li><strong>Revoke sign-in access:</strong> If you signed in with a third-party account, you can remove Navitag Track's access in that provider's account settings.</li>
       <li><strong>Direct Request:</strong> You may use our <NuxtLink to="/delete-account" class="text-navitag-blue hover:underline">Delete Account page</NuxtLink> or <NuxtLink to="/contact" class="text-navitag-blue hover:underline">contact us</NuxtLink> to request permanent deletion of your data. We will process such requests within 30 days.</li>
     </ul>
 
