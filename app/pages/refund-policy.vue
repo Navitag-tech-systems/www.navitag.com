@@ -21,7 +21,7 @@ if (import.meta.client) {
     <p class="italic text-gray-500 mb-8">Last Updated: September 28, 2026</p>
 
     <p class="text-gray-700 leading-relaxed mb-6">
-      This Refund Policy applies to purchases made from Navitag through this website and the <strong>Navitag Track</strong> app — data plan top-ups and renewals for your tracking devices, and Navitag hardware sold in our online shop. The seller is the Navitag entity named on your receipt: <strong>Navitag Technology Systems OPC</strong> (26 Pandi Industrial Park, Cupang, Pandi, Bulacan 3014, Philippines) for orders in the Philippines, Southeast Asia and Asia-Pacific, or <strong>Navitag Digital Innovations LLC</strong> (Sheridan, Wyoming, USA) for all other regions.
+      This Refund Policy applies to purchases made from Navitag through this website and the <strong>Navitag Track</strong> app — data plan top-ups and renewals for your tracking devices, and Navitag hardware sold in our online shop. The seller is the Navitag entity named on your receipt: <strong>Navitag Technology Systems OPC</strong> (26 Pandi Industrial Park, Cupang, Pandi, Bulacan 3014, Philippines) for orders in the Philippines and Southeast Asia, or <strong>Navitag Digital Innovations LLC</strong> (Sheridan, Wyoming, USA) for orders in the United States.
     </p>
 
     <div class="bg-blue-50 border-l-4 border-navitag-blue p-4 rounded-r-lg mb-6">
@@ -43,7 +43,7 @@ if (import.meta.client) {
     </ul>
     <p class="text-gray-700 leading-relaxed mb-2"><strong>Hardware</strong></p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">
-      <li>The device arrived damaged or does not work out of the box.</li>
+      <li>The device arrived damaged, or is faulty and does not work — whether the fault is found before or after installation.</li>
       <li>You received the wrong item, or an item that is missing parts listed in the product description.</li>
       <li>The item is materially different from its description on our website.</li>
     </ul>
@@ -56,7 +56,7 @@ if (import.meta.client) {
       <li>Change of mind, or a plan or device bought by mistake for a device you no longer use.</li>
       <li>A data plan that has activated and is working. Plan time that has already been consumed is not refunded.</li>
       <li>Plans bought for a device that was later lost, stolen, sold or damaged.</li>
-      <li>Hardware that has been installed, physically modified, opened, or damaged after delivery, or returned without its original packaging and accessories.</li>
+      <li>Hardware that works as described but has been installed, or that has been physically modified, opened, or damaged after delivery, or returned without its original packaging and accessories. A faulty device is refundable whether or not it has been installed.</li>
       <li>Connectivity problems caused by the vehicle installation, no mobile coverage at the location, or a SIM that was removed or replaced.</li>
       <li>Requests made more than 7 days after purchase (plans) or delivery (hardware).</li>
       <li>Purchases made on <strong>Shopee</strong> or <strong>Lazada</strong>, which are governed by that marketplace's own return and refund process.</li>
@@ -73,7 +73,7 @@ if (import.meta.client) {
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">4. How Refunds Are Paid</h2>
     <p class="text-gray-700 leading-relaxed mb-4">
-      Approved refunds are returned to the <strong>original payment method</strong> through the same payment processor that took the payment (Xendit for cards, GCash and Maya; PayPal for card payments made through PayPal). We do not refund to a different card, account or wallet, and we do not pay refunds in cash.
+      Approved refunds are returned to the <strong>original payment method</strong> through the same payment processor that took the payment (Xendit for cards, GCash and Maya paid in the Philippines; PayPal for card payments made through PayPal). We do not refund to a different card, account or wallet, and we do not pay refunds in cash.
     </p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-6">
       <li><strong>Cards paid through Xendit:</strong> we submit the refund within 1 business day of approval; your bank then takes about 7–14 days to credit your card, depending on the issuer.</li>

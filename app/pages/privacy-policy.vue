@@ -21,7 +21,7 @@ if (import.meta.client) {
     <p class="italic text-gray-500 mb-8">Last Updated: September 28, 2026</p>
 
     <p class="text-gray-700 leading-relaxed mb-6">
-      This Privacy Policy explains how <strong>Navitag Technology Systems OPC</strong> ("Navitag", "we", "us", or "our"), a corporation with its office at 26 Pandi Industrial Park, Cupang, Pandi, Bulacan 3014, Philippines, collects, uses, and shares information when you use the <strong>Navitag Track</strong> mobile application, website, and related services (the "App"). We are the data controller responsible for your personal information. By using the App, you agree to the practices described below.
+      This Privacy Policy explains how <strong>Navitag Technology Systems OPC</strong> ("Navitag", "we", "us", or "our"), a corporation with its office at 26 Pandi Industrial Park, Cupang, Pandi, Bulacan 3014, Philippines, collects, uses, and shares information when you use the <strong>Navitag Track</strong> mobile application, website, and related services (the "App"). We are the data controller responsible for your personal information for all users of the App and all customers, including customers who buy from our affiliate <strong>Navitag Digital Innovations LLC</strong> (Sheridan, Wyoming, USA). By using the App, you agree to the practices described below.
     </p>
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">1. Information We Collect</h2>
@@ -68,7 +68,7 @@ if (import.meta.client) {
       <strong>Payment &amp; Transaction Information.</strong> When you buy a data plan top-up or a product from us, we collect the information needed to process and fulfil the order: your name, email address, phone number, billing and (for physical goods) shipping address, the items purchased, the amount and currency, the payment method you chose, and the transaction identifiers our payment processors return to us. Payments are processed by third-party payment processors:
     </p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">
-      <li><strong>Xendit</strong> (Xendit Philippines / PT Xendit Indonesia) — credit and debit card payments and e-wallet payments (GCash, Maya). Card and e-wallet authorisation takes place on Xendit's own PCI DSS-certified payment page or secure fields.</li>
+      <li><strong>Xendit</strong> (Xendit Philippines, Inc.) — for customers in the Philippines: credit and debit card payments and e-wallet payments (GCash, Maya). Card and e-wallet authorisation takes place on Xendit's own PCI DSS-certified payment page or secure fields.</li>
       <li><strong>PayPal</strong> — credit and debit card payments entered through PayPal's hosted card fields.</li>
     </ul>
     <div class="bg-blue-50 border-l-4 border-navitag-blue p-4 rounded-r-lg mb-6">
@@ -96,7 +96,7 @@ if (import.meta.client) {
       <li><strong>Firebase (Google)</strong> — secure authentication, push notification delivery (Firebase Cloud Messaging), analytics, and encrypted data storage.</li>
       <li><strong>Google Sign-In</strong> — to facilitate Single Sign-On when you choose to sign in with Google.</li>
       <li><strong>Sign in with Apple</strong> — to facilitate Single Sign-On when you choose to sign in with Apple.</li>
-      <li><strong>Xendit</strong> — payment processing for card and e-wallet (GCash, Maya) purchases. We share your name, email address, phone number, billing details, the order amount and description, and a transaction reference so Xendit can authorise the payment, screen for fraud and settle the funds.</li>
+      <li><strong>Xendit</strong> — payment processing for card and e-wallet (GCash, Maya) purchases made in the Philippines. We share your name, email address, phone number, billing details, the order amount and description, and a transaction reference so Xendit can authorise the payment, screen for fraud and settle the funds.</li>
       <li><strong>PayPal</strong> — payment processing for card purchases made through PayPal's hosted card fields, with the same order details.</li>
       <li><strong>Delivery partners</strong> — for physical products, your name, phone number and shipping address are shared with the courier that delivers the order.</li>
     </ul>
@@ -140,7 +140,7 @@ if (import.meta.client) {
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">8. Security</h2>
     <p class="text-gray-700 leading-relaxed mb-6">
-      We implement industry-standard security measures, including SSL/TLS encryption, to protect your data during transmission and while stored in our secure Firebase environment.
+      We implement industry-standard security measures, including SSL/TLS encryption, to protect your data during transmission, and we store it in secure locations.
     </p>
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">9. Changes to This Privacy Policy</h2>

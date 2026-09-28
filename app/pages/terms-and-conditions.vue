@@ -24,8 +24,8 @@ if (import.meta.client) {
       These Terms and Conditions ("Terms") govern your use of the navitag.com website and online shop, the <strong>Navitag Track</strong> mobile app, Navitag GPS tracking devices, and the data plans that connect them (together, the "Services"). They form an agreement between you and the Navitag entity that sells to you:
     </p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">
-      <li><strong>Navitag Technology Systems OPC</strong>, 26 Pandi Industrial Park, Cupang, Pandi, Bulacan 3014, Philippines — for customers in the Philippines, Southeast Asia and Asia-Pacific; or</li>
-      <li><strong>Navitag Digital Innovations LLC</strong>, Sheridan, Wyoming, USA — for customers in all other regions.</li>
+      <li><strong>Navitag Technology Systems OPC</strong>, 26 Pandi Industrial Park, Cupang, Pandi, Bulacan 3014, Philippines — for customers in the Philippines and Southeast Asia; or</li>
+      <li><strong>Navitag Digital Innovations LLC</strong>, Sheridan, Wyoming, USA — for customers in the United States.</li>
     </ul>
     <p class="text-gray-700 leading-relaxed mb-6">
       "Navitag", "we", "us" and "our" mean that entity. The seller is also named on your receipt. By creating an account, placing an order or using the Services, you agree to these Terms, our <NuxtLink to="/privacy-policy" class="text-navitag-blue hover:underline">Privacy Policy</NuxtLink> and our <NuxtLink to="/refund-policy" class="text-navitag-blue hover:underline">Refund Policy</NuxtLink>. If you do not agree, do not use the Services.
@@ -52,8 +52,8 @@ if (import.meta.client) {
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">3. Prices and Payment</h2>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-6">
-      <li><strong>Currency.</strong> Prices are shown in Philippine pesos (PHP) for customers in the Philippines and in US dollars (USD) elsewhere. The total shown at checkout — including shipping, any discount and any applicable taxes — is the amount you pay.</li>
-      <li><strong>Payment methods.</strong> The methods available depend on your region and are shown at checkout. They may include e-wallets (GCash, Maya) and credit or debit cards processed by <strong>Xendit</strong>, and credit or debit cards processed by <strong>PayPal</strong>. Payment is made on the processor's secure page or fields; we never see or store your full card number, expiry date or security code.</li>
+      <li><strong>Currency.</strong> Prices are shown in Philippine pesos (PHP) for customers in the Philippines and in US dollars (USD) for customers in other countries. The total shown at checkout — including shipping, any discount and any applicable taxes — is the amount you pay.</li>
+      <li><strong>Payment methods.</strong> The methods available depend on your country and are shown at checkout. Customers in the Philippines can pay with e-wallets (GCash, Maya) and credit or debit cards processed by <strong>Xendit</strong>; card payments can also be processed by <strong>PayPal</strong>. Customers outside the Philippines pay by credit or debit card processed by PayPal. Payment is made on the processor's secure page or fields; we never see or store your full card number, expiry date or security code.</li>
       <li><strong>When an order is accepted.</strong> An order is accepted only once the payment processor confirms your payment. If a payment is declined, cancelled or not completed, no order is created and no plan is activated.</li>
       <li><strong>Pricing errors.</strong> If an item is listed at an obviously wrong price, we may cancel the order and refund the full amount paid, even after it is confirmed.</li>
       <li><strong>Promo codes.</strong> Promo codes apply only to the products and regions stated for them, cannot be exchanged for cash, cannot be combined unless we say so, and may be withdrawn at any time. We may cancel orders that use a code obtained or used improperly.</li>
