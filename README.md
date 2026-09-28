@@ -274,4 +274,4 @@ npm run build
 ## Navitag Entities
 
 - **Navitag Digital Innovations LLC** — Sheridan, Wyoming, USA (Global HQ; PayPal merchant entity)
-- **Navitag Technology Systems OPC** — Makati, Metro Manila, Philippines (SEA/APAC regional hub)
+- **Navitag Technology Systems OPC** — 26 Pandi Industrial Park, Cupang, Pandi, Bulacan 3014, Philippines (SEA/APAC regional hub; holds the Xendit account)

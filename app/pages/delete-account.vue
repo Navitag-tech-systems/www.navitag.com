@@ -34,7 +34,7 @@ const mailto =
     <p class="text-gray-700 leading-relaxed mb-6">
       This page explains how to request the deletion of your <strong>Navitag Track</strong> account and the personal
       data associated with it. Navitag Track is operated by <strong>Navitag Technology Systems OPC</strong>, based in
-      Makati, Metro Manila, Philippines.
+      Pandi, Bulacan, Philippines.
     </p>
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">Option 1: Delete from within the App</h2>
@@ -92,7 +92,7 @@ const mailto =
       <p class="text-gray-700 mb-3">For any questions about deletion or your privacy, contact us at:</p>
       <p class="text-gray-700">
         <strong>Navitag Technology Systems OPC</strong><br>
-        Makati, Metro Manila, Philippines<br>
+        26 Pandi Industrial Park, Cupang, Pandi, Bulacan 3014, Philippines<br>
         <strong>Email:</strong> info@navitag.com<br>
         <strong>Privacy Policy:</strong>
         <NuxtLink to="/privacy-policy" class="text-navitag-blue hover:underline">www.navitag.com/privacy-policy</NuxtLink>

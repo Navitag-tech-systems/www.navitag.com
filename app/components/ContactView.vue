@@ -91,7 +91,7 @@ const defaultInfoCards = computed<InfoCard[]>(() => {
     {
       icon: 'fa-earth-asia',
       label: 'SEA / APAC',
-      text: 'Navitag Technology Systems OPC · Makati, Metro Manila, Philippines',
+      text: 'Navitag Technology Systems OPC · Pandi, Bulacan, Philippines',
     },
     {
       icon: 'fa-clock',
