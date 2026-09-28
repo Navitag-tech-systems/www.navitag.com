@@ -95,6 +95,10 @@ const year = new Date().getFullYear()
           Privacy Policy
         </NuxtLink>
         <span class="hidden sm:inline-block w-px h-3 bg-gray-300"></span>
+        <NuxtLink to="/refund-policy" class="hover:text-navitag-blue transition-colors">
+          Refund Policy
+        </NuxtLink>
+        <span class="hidden sm:inline-block w-px h-3 bg-gray-300"></span>
         <NuxtLink :to="`${region.basePath}/contact`" class="hover:text-navitag-blue transition-colors">
           Contact us
         </NuxtLink>
