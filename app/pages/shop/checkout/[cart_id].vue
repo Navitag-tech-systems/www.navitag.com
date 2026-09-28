@@ -38,6 +38,12 @@ const paying = ref(false)
 let cardFields: any = null
 const cardValid = ref(false)
 
+// e-wallet (Xendit GCash / Maya) state. PH customers (PHP carts) pay by
+// wallet redirect; every other region keeps PayPal cards.
+const xenditLoading = ref(false)
+const xenditError = ref('')
+const payMethod = ref<'' | 'gcash' | 'maya'>('')
+
 // Address review cards default to collapsed — the customer just left
 // the shipping page, so the values are fresh in their head.
 const shipOpen = ref(false)
@@ -103,7 +109,7 @@ async function fetchCart() {
   try {
     const res = await medusaFetch<{ cart: any }>(`/store/carts/${cartId.value}`, {
       params: {
-        fields: '*items,*items.variant,*items.variant.options,*items.thumbnail,+items.product_handle,*shipping_methods,*shipping_address,*billing_address,+item_subtotal,+shipping_total,+tax_total,+discount_total,+total,+subtotal',
+        fields: '*items,*items.variant,*items.variant.options,*items.thumbnail,+items.product_handle,*shipping_methods,*shipping_address,*billing_address,*promotions,+item_subtotal,+shipping_total,+tax_total,+discount_total,+total,+subtotal',
       },
     })
     cart.value = res.cart
@@ -116,7 +122,8 @@ async function fetchCart() {
     // Auto-mount the PayPal hosted card fields as soon as the cart is
     // hydrated. The customer landed here from /shop/shipping so we already
     // have a billing address + email — no extra confirmation click needed.
-    initPayment()
+    // PHP carts pay by e-wallet instead (picked on tap, no pre-init).
+    if (!isPhp.value) initPayment()
   }
   catch (e: any) {
     error.value = e?.data?.message || e?.message || 'Failed to load cart.'
@@ -129,6 +136,7 @@ async function fetchCart() {
 // ─── Derived ──────────────────────────────────────────────────────────
 const items = computed<any[]>(() => cart.value?.items || [])
 const currency = computed(() => (cart.value?.currency_code || 'USD').toUpperCase())
+const isPhp = computed(() => currency.value === 'PHP')
 
 function fmt(amount: number | null | undefined): string {
   if (amount == null) return ''
@@ -165,10 +173,12 @@ const itemsSubtotal = computed(() => {
 })
 
 const shippingTotal = computed<number>(() => cart.value?.shipping_total ?? 0)
+const discountTotal = computed<number>(() => cart.value?.discount_total ?? 0)
+const promoCode = computed<string | null>(() => cart.value?.promotions?.find((p: any) => p.code)?.code || null)
 const grandTotal = computed<number>(() => {
   const t = cart.value?.total
   if (typeof t === 'number' && t > 0) return t
-  return itemsSubtotal.value + shippingTotal.value
+  return itemsSubtotal.value - discountTotal.value + shippingTotal.value
 })
 
 const shippingMethodName = computed(() => cart.value?.shipping_methods?.[0]?.name || 'Shipping')
@@ -185,6 +195,52 @@ function fmtAddress(a: any): string {
     a.country_code ? a.country_code.toUpperCase() : '',
   ].filter(Boolean)
   return lines.join('\n')
+}
+
+// ─── Xendit e-wallet (GCash / Maya) — PHP carts only ─────────────────
+async function payWithXendit(method: 'gcash' | 'maya') {
+  if (xenditLoading.value) return
+  if (!email.value.trim()) {
+    xenditError.value = 'Please enter your email address first.'
+    return
+  }
+  payMethod.value = method
+  xenditLoading.value = true
+  xenditError.value = ''
+  try {
+    const firebaseUid = auth.currentUser?.uid
+    // Persist email (+ firebase_uid) without clobbering existing cart metadata.
+    await medusaFetch(`/store/carts/${cartId.value}`, {
+      method: 'POST',
+      body: {
+        email: email.value.trim(),
+        metadata: {
+          ...(cart.value?.metadata || {}),
+          ...(firebaseUid ? { firebase_uid: firebaseUid } : {}),
+        },
+      },
+    })
+    $fbq('AddPaymentInfo', {
+      value: grandTotal.value,
+      currency: currency.value,
+      content_ids: items.value.map((it: any) => it.variant_id).filter(Boolean),
+      content_type: 'product',
+      num_items: items.value.reduce((n: number, it: any) => n + (it.quantity || 0), 0),
+      audience: 'b2c',
+    })
+    const { startPayment } = useXenditCheckout({ publishableKey: MEDUSA_PRODUCTS_PUBLISHABLE_KEY })
+    // Redirects to GCash / Maya; /checkout/xendit/success completes the cart
+    // and routes to /shop/order-complete. Control does not return here.
+    await startPayment({
+      cartId: cartId.value,
+      provider: method === 'gcash' ? 'pp_xendit_gcash' : 'pp_xendit_maya',
+      flow: 'shop',
+    })
+  }
+  catch (e: any) {
+    xenditError.value = e?.data?.message || e?.message || 'Could not start payment. Please try again.'
+    xenditLoading.value = false
+  }
 }
 
 // ─── Payment ──────────────────────────────────────────────────────────
@@ -621,6 +677,10 @@ async function dismissFailure() {
               <span class="text-gray-500">{{ shippingMethodName }}</span>
               <span class="text-gray-900 font-medium">{{ fmt(shippingTotal) }}</span>
             </div>
+            <div v-if="discountTotal > 0" class="px-6 py-3 flex justify-between items-center text-sm">
+              <span class="text-gray-500">Discount<template v-if="promoCode"> ({{ promoCode }})</template></span>
+              <span class="text-green-600 font-medium">−{{ fmt(discountTotal) }}</span>
+            </div>
             <div class="px-6 py-4 flex justify-between items-center bg-gray-50">
               <span class="font-bold text-gray-950">Total</span>
               <span class="font-extrabold text-lg text-navitag-blue">
@@ -699,15 +759,56 @@ async function dismissFailure() {
               type="email"
               autocomplete="email"
               placeholder="you@example.com"
-              :disabled="paymentReady || paymentLoading"
+              :disabled="paymentReady || paymentLoading || xenditLoading"
               class="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-navitag-blue/30 focus:border-navitag-blue transition disabled:bg-gray-50 disabled:text-gray-500"
             />
             <p class="text-xs text-gray-400 mt-2">Order confirmation and tracking will be sent here.</p>
           </div>
         </div>
 
-        <!-- Payment Section -->
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+        <!-- E-wallet payment (PH / PHP carts) -->
+        <template v-if="isPhp">
+          <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+            <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Payment</h2>
+            </div>
+            <div class="px-6 py-5">
+              <p class="text-xs text-gray-500 mb-3">Choose your e-wallet. You'll be redirected to authorize the payment.</p>
+              <div class="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  :disabled="!email || xenditLoading"
+                  aria-label="Pay with GCash"
+                  class="flex items-center justify-center h-16 rounded-xl border-2 bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="payMethod === 'gcash' ? 'border-navitag-blue ring-2 ring-navitag-blue/15' : 'border-gray-200 hover:border-gray-300'"
+                  @click="payWithXendit('gcash')"
+                >
+                  <img src="/payments/gcash.svg" alt="GCash" class="max-h-6 max-w-full object-contain">
+                </button>
+                <button
+                  type="button"
+                  :disabled="!email || xenditLoading"
+                  aria-label="Pay with Maya"
+                  class="flex items-center justify-center h-16 rounded-xl border-2 bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  :class="payMethod === 'maya' ? 'border-navitag-blue ring-2 ring-navitag-blue/15' : 'border-gray-200 hover:border-gray-300'"
+                  @click="payWithXendit('maya')"
+                >
+                  <img src="/payments/maya.svg" alt="Maya" class="max-h-5 max-w-full object-contain">
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="xenditError" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
+            <i class="fas fa-times-circle mr-2"></i>{{ xenditError }}
+          </div>
+          <div v-if="xenditLoading" class="mb-4 p-4 bg-blue-50 border border-blue-100 rounded-xl text-navitag-blue text-sm text-center">
+            <i class="fas fa-spinner fa-spin mr-2"></i>Redirecting to your e-wallet…
+          </div>
+        </template>
+
+        <!-- Payment Section (PayPal card fields — non-PHP carts) -->
+        <div v-else class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
           <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
             <h2 class="font-bold text-gray-950 text-sm uppercase tracking-wider">Payment</h2>
           </div>
@@ -748,7 +849,7 @@ async function dismissFailure() {
           </div>
         </div>
 
-        <div v-if="paymentError" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
+        <div v-if="!isPhp && paymentError" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
           <i class="fas fa-times-circle mr-2"></i>{{ paymentError }}
         </div>
 
@@ -767,7 +868,7 @@ async function dismissFailure() {
         </button>
 
         <p class="text-center text-xs text-gray-400 mt-4">
-          <i class="fas fa-lock mr-1"></i>Secure payment powered by PayPal.
+          <i class="fas fa-lock mr-1"></i>Secure payment powered by {{ isPhp ? 'Xendit' : 'PayPal' }}.
           By placing your order, you agree to Navitag's
           <NuxtLink to="/privacy-policy" class="text-navitag-blue underline">Privacy Policy</NuxtLink>.
         </p>

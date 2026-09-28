@@ -25,6 +25,8 @@ interface MedusaCart {
   shipping_methods?: any[]
   total?: number
   subtotal?: number
+  discount_total?: number
+  promotions?: { id: string; code?: string | null }[]
   metadata?: Record<string, any> | null
 }
 
@@ -96,7 +98,7 @@ export const useCartStore = defineStore('cart', {
           `${MEDUSA_BACKEND_URL}/store/carts/${this.cartId}`,
           {
             params: {
-              fields: '*items,*items.variant,*items.variant.options,*items.thumbnail,+items.product_handle,*shipping_methods,*shipping_address,*billing_address,+item_subtotal,+shipping_total,+tax_total,+discount_total,+total,+subtotal',
+              fields: '*items,*items.variant,*items.variant.options,*items.thumbnail,+items.product_handle,*shipping_methods,*shipping_address,*billing_address,*promotions,+item_subtotal,+shipping_total,+tax_total,+discount_total,+total,+subtotal',
             },
             headers: { 'x-publishable-api-key': SHOP_PUBKEY },
           },
@@ -294,6 +296,33 @@ export const useCartStore = defineStore('cart', {
       await medusaFetch(`/store/carts/${this.cartId}/shipping-methods`, {
         method: 'POST',
         body: { option_id: optionId },
+      })
+      await this.refresh()
+    },
+
+    /**
+     * Apply a promo code. Medusa 400s on an unknown code (throws here), but
+     * silently skips a real code whose rules don't match the cart (e.g. a
+     * PHP-only code on a USD cart) — so "applied" means the code is present
+     * on cart.promotions afterwards.
+     */
+    async applyPromoCode(code: string): Promise<boolean> {
+      if (!this.cartId) throw new Error('Cart not initialized.')
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
+      await medusaFetch(`/store/carts/${this.cartId}/promotions`, {
+        method: 'POST',
+        body: { promo_codes: [code] },
+      })
+      await this.refresh()
+      return (this.cart?.promotions || []).some(p => p.code === code)
+    },
+
+    async removePromoCode(code: string) {
+      if (!this.cartId) throw new Error('Cart not initialized.')
+      const { medusaFetch } = useMedusa({ publishableKey: SHOP_PUBKEY })
+      await medusaFetch(`/store/carts/${this.cartId}/promotions`, {
+        method: 'DELETE',
+        body: { promo_codes: [code] },
       })
       await this.refresh()
     },

@@ -142,13 +142,71 @@ const shippingCost = computed<number | null>(() => {
   return opt?.amount ?? 0
 })
 
+const discountTotal = computed<number>(() => cart.value?.discount_total ?? 0)
+
 const grandTotal = computed(() => {
   const ship = shippingCost.value ?? 0
   const c = cart.value as any
   // If cart already includes shipping in total, prefer that.
   if (typeof c?.total === 'number' && c.shipping_total === ship) return c.total
-  return itemsSubtotal.value + ship
+  return itemsSubtotal.value - discountTotal.value + ship
 })
+
+// ─── Promo code ──────────────────────────────────────────────────────
+const promoInput = ref('')
+const promoApplied = ref<string | null>(null)
+const promoError = ref('')
+const promoBusy = ref(false)
+
+// Restore the applied state when the cart already carries a code
+// (customer stepped back from checkout).
+function syncPromoFromCart() {
+  const code = cart.value?.promotions?.find(p => p.code)?.code || null
+  promoApplied.value = code
+  if (code) promoInput.value = code
+}
+
+async function applyPromo() {
+  const code = promoInput.value.trim()
+  if (!code || promoBusy.value || promoApplied.value) return
+  promoBusy.value = true
+  promoError.value = ''
+  try {
+    const ok = await cartStore.applyPromoCode(code)
+    if (ok) {
+      promoApplied.value = code
+      promoInput.value = code
+    }
+    else {
+      promoError.value = 'Invalid promo code.'
+    }
+  }
+  catch (e: any) {
+    promoError.value = e?.data?.type === 'invalid_data' || e?.status === 400
+      ? 'Invalid promo code.'
+      : (e?.data?.message || e?.message || 'Could not apply promo code.')
+  }
+  finally {
+    promoBusy.value = false
+  }
+}
+
+async function removePromo() {
+  if (!promoApplied.value || promoBusy.value) return
+  promoBusy.value = true
+  promoError.value = ''
+  try {
+    await cartStore.removePromoCode(promoApplied.value)
+    promoApplied.value = null
+    promoInput.value = ''
+  }
+  catch (e: any) {
+    promoError.value = e?.data?.message || e?.message || 'Could not remove promo code.'
+  }
+  finally {
+    promoBusy.value = false
+  }
+}
 
 // ─── Lifecycle ───────────────────────────────────────────────────────
 async function loadCart() {
@@ -163,6 +221,7 @@ async function loadCart() {
   try {
     await cartStore.refresh()
     await cartStore.alignRegion()
+    syncPromoFromCart()
 
     await cartStore.listShippingOptions()
     if (shippingOptions.value.length === 1) {
@@ -611,6 +670,57 @@ useSeoMeta({
           </div>
         </fieldset>
 
+        <!-- Promo code -->
+        <fieldset v-if="items.length">
+          <legend class="text-[12px] uppercase tracking-[0.18em] font-semibold text-gray-700">
+            Promo code
+          </legend>
+          <div
+            class="mt-3 flex rounded-xl border bg-white overflow-hidden transition"
+            :class="promoApplied
+              ? 'border-green-500 ring-2 ring-green-500/20'
+              : promoError
+                ? 'border-red-400 ring-2 ring-red-400/20'
+                : 'border-gray-200 focus-within:ring-2 focus-within:ring-navitag-blue focus-within:border-transparent'"
+          >
+            <input
+              v-model="promoInput"
+              type="text"
+              placeholder="Enter promo code"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              :readonly="!!promoApplied"
+              :disabled="promoBusy"
+              class="flex-1 min-w-0 px-4 py-3 bg-white text-gray-900 placeholder-gray-400 focus:outline-none read-only:text-gray-700 disabled:bg-white"
+              @input="promoError = ''"
+              @keydown.enter.prevent="applyPromo"
+            />
+            <button
+              v-if="promoApplied"
+              type="button"
+              :disabled="promoBusy"
+              aria-label="Remove promo code"
+              class="shrink-0 w-12 flex items-center justify-center border-l border-gray-200 text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition disabled:opacity-50"
+              @click="removePromo"
+            >
+              <i v-if="promoBusy" class="fas fa-spinner fa-spin"></i>
+              <i v-else class="fas fa-times"></i>
+            </button>
+            <button
+              v-else
+              type="button"
+              :disabled="promoBusy || !promoInput.trim()"
+              class="shrink-0 px-5 border-l border-gray-200 text-[14px] font-semibold text-navitag-blue hover:bg-gray-50 transition disabled:text-gray-400 disabled:hover:bg-white"
+              @click="applyPromo"
+            >
+              <i v-if="promoBusy" class="fas fa-spinner fa-spin"></i>
+              <span v-else>Apply</span>
+            </button>
+          </div>
+          <p v-if="promoError" class="mt-1.5 text-[12px] text-red-600">{{ promoError }}</p>
+        </fieldset>
+
         <!-- Charges breakdown -->
         <div v-if="items.length" class="rounded-2xl border border-gray-200 bg-white p-5 space-y-2">
           <div class="flex items-center justify-between text-[14px] text-gray-700">
@@ -625,11 +735,15 @@ useSeoMeta({
               <template v-else>{{ fmt(shippingCost) }}</template>
             </span>
           </div>
+          <div v-if="discountTotal > 0" class="flex items-center justify-between text-[14px] text-gray-700">
+            <span>Discount<template v-if="promoApplied"> ({{ promoApplied }})</template></span>
+            <span class="font-medium text-green-600">−{{ fmt(discountTotal) }}</span>
+          </div>
           <div class="pt-2 mt-1 border-t border-gray-100 flex items-center justify-between text-[15.5px]">
             <span class="font-semibold text-gray-950">Total</span>
             <span class="font-semibold text-gray-950">
               <template v-if="selectedShipping?.price_type === 'calculated'">
-                {{ fmt(itemsSubtotal) }} + shipping
+                {{ fmt(itemsSubtotal - discountTotal) }} + shipping
               </template>
               <template v-else>{{ fmt(grandTotal) }}</template>
             </span>
