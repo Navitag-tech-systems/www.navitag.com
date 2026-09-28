@@ -24,7 +24,7 @@ if (import.meta.client) {
       These Terms and Conditions ("Terms") govern your use of the navitag.com website and online shop, the <strong>Navitag Track</strong> mobile app, Navitag GPS tracking devices, and the data plans that connect them (together, the "Services"). They form an agreement between you and the Navitag entity that sells to you:
     </p>
     <ul class="list-disc pl-5 space-y-2 text-gray-700 mb-4">
-      <li><strong>Navitag Technology Systems OPC</strong>, Makati City, Metro Manila, Philippines — for customers in the Philippines, Southeast Asia and Asia-Pacific; or</li>
+      <li><strong>Navitag Technology Systems OPC</strong>, 5th Floor, Phinma Plaza, 39 Plaza Drive, Rockwell Center, Makati City 1210, Metro Manila, Philippines — for customers in the Philippines, Southeast Asia and Asia-Pacific; or</li>
       <li><strong>Navitag Digital Innovations LLC</strong>, Sheridan, Wyoming, USA — for customers in all other regions.</li>
     </ul>
     <p class="text-gray-700 leading-relaxed mb-6">
@@ -171,6 +171,7 @@ if (import.meta.client) {
       <li><strong>Contact form:</strong> <NuxtLink to="/contact" class="text-navitag-blue hover:underline">navitag.com/contact</NuxtLink></li>
       <li><strong>Email:</strong> <a href="mailto:info@navitag.com" class="text-navitag-blue hover:underline">info@navitag.com</a></li>
       <li><strong>Phone / Viber:</strong> <a href="tel:+639176388402" class="text-navitag-blue hover:underline">+63 917 638 8402</a></li>
+      <li><strong>Address:</strong> Navitag Technology Systems OPC, 5th Floor, Phinma Plaza, 39 Plaza Drive, Rockwell Center, Makati City 1210, Metro Manila, Philippines</li>
     </ul>
   </div>
 </template>

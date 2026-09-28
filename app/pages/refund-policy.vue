@@ -18,10 +18,10 @@ if (import.meta.client) {
 <template>
   <div class="max-w-3xl mx-auto px-5 py-10">
     <h1 class="text-3xl font-bold text-gray-900 border-b-2 border-navitag-blue pb-3 mb-2">Refund Policy</h1>
-    <p class="italic text-gray-500 mb-8">Last Updated: September 24, 2026</p>
+    <p class="italic text-gray-500 mb-8">Last Updated: September 28, 2026</p>
 
     <p class="text-gray-700 leading-relaxed mb-6">
-      This Refund Policy applies to purchases made from Navitag through this website and the <strong>Navitag Track</strong> app — data plan top-ups and renewals for your tracking devices, and Navitag hardware sold in our online shop. The seller is the Navitag entity named on your receipt: <strong>Navitag Technology Systems OPC</strong> (Makati, Metro Manila, Philippines) for orders in the Philippines, Southeast Asia and Asia-Pacific, or <strong>Navitag Digital Innovations LLC</strong> (Sheridan, Wyoming, USA) for all other regions.
+      This Refund Policy applies to purchases made from Navitag through this website and the <strong>Navitag Track</strong> app — data plan top-ups and renewals for your tracking devices, and Navitag hardware sold in our online shop. The seller is the Navitag entity named on your receipt: <strong>Navitag Technology Systems OPC</strong> (5th Floor, Phinma Plaza, 39 Plaza Drive, Rockwell Center, Makati City 1210, Metro Manila, Philippines) for orders in the Philippines, Southeast Asia and Asia-Pacific, or <strong>Navitag Digital Innovations LLC</strong> (Sheridan, Wyoming, USA) for all other regions.
     </p>
 
     <div class="bg-blue-50 border-l-4 border-navitag-blue p-4 rounded-r-lg mb-6">
@@ -110,6 +110,7 @@ if (import.meta.client) {
       <li><strong>Contact form:</strong> <NuxtLink to="/contact" class="text-navitag-blue hover:underline">navitag.com/contact</NuxtLink></li>
       <li><strong>Email:</strong> <a href="mailto:info@navitag.com" class="text-navitag-blue hover:underline">info@navitag.com</a></li>
       <li><strong>Phone / Viber:</strong> <a href="tel:+639176388402" class="text-navitag-blue hover:underline">+63 917 638 8402</a></li>
+      <li><strong>Address:</strong> Navitag Technology Systems OPC, 5th Floor, Phinma Plaza, 39 Plaza Drive, Rockwell Center, Makati City 1210, Metro Manila, Philippines</li>
     </ul>
     <p class="text-gray-700 leading-relaxed mb-6">
       See also our <NuxtLink to="/privacy-policy" class="text-navitag-blue hover:underline">Privacy Policy</NuxtLink> for how payment information is handled, and our <NuxtLink to="/terms-and-conditions" class="text-navitag-blue hover:underline">Terms and Conditions</NuxtLink>.

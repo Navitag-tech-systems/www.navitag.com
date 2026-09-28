@@ -18,10 +18,10 @@ if (import.meta.client) {
 <template>
   <div class="max-w-3xl mx-auto px-5 py-10">
     <h1 class="text-3xl font-bold text-gray-900 border-b-2 border-navitag-blue pb-3 mb-2">Privacy Policy</h1>
-    <p class="italic text-gray-500 mb-8">Last Updated: September 24, 2026</p>
+    <p class="italic text-gray-500 mb-8">Last Updated: September 28, 2026</p>
 
     <p class="text-gray-700 leading-relaxed mb-6">
-      This Privacy Policy explains how <strong>Navitag Technology Systems OPC</strong> ("Navitag", "we", "us", or "our"), a corporation based in Makati, Metro Manila, Philippines, collects, uses, and shares information when you use the <strong>Navitag Track</strong> mobile application, website, and related services (the "App"). We are the data controller responsible for your personal information. By using the App, you agree to the practices described below.
+      This Privacy Policy explains how <strong>Navitag Technology Systems OPC</strong> ("Navitag", "we", "us", or "our"), a corporation with its office at 5th Floor, Phinma Plaza, 39 Plaza Drive, Rockwell Center, Makati City 1210, Metro Manila, Philippines, collects, uses, and shares information when you use the <strong>Navitag Track</strong> mobile application, website, and related services (the "App"). We are the data controller responsible for your personal information. By using the App, you agree to the practices described below.
     </p>
 
     <h2 class="text-xl font-bold text-gray-800 mt-8 mb-4">1. Information We Collect</h2>
@@ -156,6 +156,7 @@ if (import.meta.client) {
       <li><strong>Contact form:</strong> <NuxtLink to="/contact" class="text-navitag-blue hover:underline">navitag.com/contact</NuxtLink></li>
       <li><strong>Email:</strong> <a href="mailto:info@navitag.com" class="text-navitag-blue hover:underline">info@navitag.com</a></li>
       <li><strong>Phone / Viber:</strong> <a href="tel:+639176388402" class="text-navitag-blue hover:underline">+63 917 638 8402</a></li>
+      <li><strong>Address:</strong> Navitag Technology Systems OPC, 5th Floor, Phinma Plaza, 39 Plaza Drive, Rockwell Center, Makati City 1210, Metro Manila, Philippines</li>
     </ul>
   </div>
 </template>
