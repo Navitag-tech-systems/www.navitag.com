@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { getDialCodeForCountry } from '~/utils/countryData'
+import { MEDUSA_PRODUCTS_PUBLISHABLE_KEY } from '~/variables'
 
 definePageMeta({
   middleware: [(to, from) => {
@@ -339,29 +340,34 @@ function toMedusaAddress(a: typeof ship.value) {
   }
 }
 
+// Save addresses + shipping method onto the cart and fire InitiateCheckout.
+async function saveShipping() {
+  const shippingAddr = toMedusaAddress(ship.value)
+  const billingAddr = billingSameAsShipping.value
+    ? shippingAddr
+    : toMedusaAddress(bill.value)
+
+  await cartStore.updateCart({
+    shipping_address: shippingAddr,
+    billing_address: billingAddr,
+  })
+  await cartStore.setShippingMethod(selectedShippingId.value!)
+  $fbq('InitiateCheckout', {
+    content_ids: items.value.map((it: any) => it.variant_id).filter(Boolean),
+    content_type: 'product',
+    value: grandTotal.value,
+    currency: (currency.value || 'USD').toUpperCase(),
+    num_items: itemCount.value,
+    audience: 'b2c',
+  })
+}
+
 async function onContinue() {
   if (!canContinue.value || submitting.value) return
   submitting.value = true
   submitError.value = ''
   try {
-    const shippingAddr = toMedusaAddress(ship.value)
-    const billingAddr = billingSameAsShipping.value
-      ? shippingAddr
-      : toMedusaAddress(bill.value)
-
-    await cartStore.updateCart({
-      shipping_address: shippingAddr,
-      billing_address: billingAddr,
-    })
-    await cartStore.setShippingMethod(selectedShippingId.value!)
-    $fbq('InitiateCheckout', {
-      content_ids: items.value.map((it: any) => it.variant_id).filter(Boolean),
-      content_type: 'product',
-      value: grandTotal.value,
-      currency: (currency.value || 'USD').toUpperCase(),
-      num_items: itemCount.value,
-      audience: 'b2c',
-    })
+    await saveShipping()
     await navigateTo(`/shop/checkout/${cartStore.cartId}`)
   }
   catch (e: any) {
@@ -369,6 +375,56 @@ async function onContinue() {
   }
   finally {
     submitting.value = false
+  }
+}
+
+// ─── PH e-wallet (Xendit GCash / Maya) ───────────────────────────────
+// PHP carts pay straight from this page, as on /plan-checkout: tap a wallet
+// → save shipping → redirect to the wallet. /checkout/xendit/success then
+// completes the cart and routes to /shop/order-complete.
+const { auth } = useFirebase()
+const isPhp = computed(() => (currency.value || '').toLowerCase() === 'php')
+const walletLoading = ref<'' | 'gcash' | 'maya'>('')
+
+async function payWithWallet(method: 'gcash' | 'maya') {
+  if (!canContinue.value || submitting.value) return
+  submitting.value = true
+  walletLoading.value = method
+  submitError.value = ''
+  try {
+    await saveShipping()
+    const email = auth.currentUser?.email
+    if (!email) {
+      // No account email to send the receipt to — fall back to the checkout
+      // page, which collects one and offers the same wallets.
+      await navigateTo(`/shop/checkout/${cartStore.cartId}`)
+      return
+    }
+    const firebaseUid = auth.currentUser?.uid
+    await cartStore.updateCart({
+      email,
+      ...(firebaseUid ? { metadata: { firebase_uid: firebaseUid } } : {}),
+    })
+    $fbq('AddPaymentInfo', {
+      value: grandTotal.value,
+      currency: (currency.value || 'PHP').toUpperCase(),
+      content_ids: items.value.map((it: any) => it.variant_id).filter(Boolean),
+      content_type: 'product',
+      num_items: itemCount.value,
+      audience: 'b2c',
+    })
+    const { startPayment } = useXenditCheckout({ publishableKey: MEDUSA_PRODUCTS_PUBLISHABLE_KEY })
+    // Redirects to GCash / Maya; control does not return to this page.
+    await startPayment({
+      cartId: cartStore.cartId!,
+      provider: method === 'gcash' ? 'pp_xendit_gcash' : 'pp_xendit_maya',
+      flow: 'shop',
+    })
+  }
+  catch (e: any) {
+    submitError.value = e?.data?.message || e?.message || 'Could not start payment. Please try again.'
+    submitting.value = false
+    walletLoading.value = ''
   }
 }
 
@@ -753,7 +809,42 @@ useSeoMeta({
 
         <p v-if="submitError" class="text-[12.5px] text-red-600">{{ submitError }}</p>
 
+        <!-- PH: e-wallet buttons replace the card button -->
+        <div v-if="isPhp">
+          <p class="text-[12px] uppercase tracking-[0.18em] font-semibold text-gray-700 mb-3">
+            Pay with
+          </p>
+          <div class="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              :disabled="!canContinue || submitting"
+              aria-label="Pay with GCash"
+              class="flex items-center justify-center h-14 rounded-xl border-2 bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+              :class="walletLoading === 'gcash' ? 'border-navitag-blue ring-2 ring-navitag-blue/15' : 'border-gray-200 hover:border-gray-300'"
+              @click="payWithWallet('gcash')"
+            >
+              <i v-if="walletLoading === 'gcash'" class="fas fa-spinner fa-spin text-navitag-blue"></i>
+              <img v-else src="/payments/gcash.svg" alt="GCash" class="max-h-6 max-w-full object-contain">
+            </button>
+            <button
+              type="button"
+              :disabled="!canContinue || submitting"
+              aria-label="Pay with Maya"
+              class="flex items-center justify-center h-14 rounded-xl border-2 bg-white transition disabled:opacity-40 disabled:cursor-not-allowed"
+              :class="walletLoading === 'maya' ? 'border-navitag-blue ring-2 ring-navitag-blue/15' : 'border-gray-200 hover:border-gray-300'"
+              @click="payWithWallet('maya')"
+            >
+              <i v-if="walletLoading === 'maya'" class="fas fa-spinner fa-spin text-navitag-blue"></i>
+              <img v-else src="/payments/maya.svg" alt="Maya" class="max-h-5 max-w-full object-contain">
+            </button>
+          </div>
+          <p v-if="walletLoading" class="mt-3 text-center text-[12.5px] text-navitag-blue">
+            Redirecting to your e-wallet…
+          </p>
+        </div>
+
         <button
+          v-else
           type="submit"
           :disabled="!canContinue || submitting"
           class="w-full h-12 rounded-full bg-navitag-blue text-white text-sm font-semibold hover:bg-[#006ADB] transition shadow-lg shadow-navitag-blue/20 disabled:opacity-50"
