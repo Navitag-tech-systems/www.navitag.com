@@ -3,9 +3,9 @@ definePageMeta({ layout: 'ph' })
 
 useSeoMeta({
   title: 'Navitag TRACK-1 — GPS Tracking Made Easy | Philippines',
-  description: 'The Navitag TRACK-1 is a plug-and-play GPS tracker with real-time global tracking, a free mobile app & fleet dashboard, free on-site installation, and lifetime warranty. No external SIM. No monthly due dates. Just pay-as-you-go.',
+  description: 'The Navitag TRACK-1 is a plug-and-play GPS tracker with real-time global tracking, a free mobile app & fleet dashboard, free on-site installation, and a 3-year warranty. No external SIM. No monthly due dates. Just pay-as-you-go.',
   ogTitle: 'Navitag TRACK-1 — GPS Tracking Made Easy | Philippines',
-  ogDescription: 'Plug-and-play GPS tracker with real-time global tracking, free app, free on-site installation, and lifetime warranty. No SIM, no contracts.',
+  ogDescription: 'Plug-and-play GPS tracker with real-time global tracking, free app, free on-site installation, and a 3-year warranty. No SIM, no contracts.',
   ogUrl: 'https://navitag.com/ph/products/track-1',
 })
 
@@ -243,7 +243,7 @@ onBeforeUnmount(() => {
               <div class="trustSignal"><div><img class="trustSignalIcon" src="https://photos.navitag.net/dump/assets/universal-compatibility.webp" alt="" loading="lazy"></div><div>Universal Vehicle Compatibility</div></div>
             </div>
             <div>
-              <div class="trustSignal"><div><img class="trustSignalIcon" src="https://photos.navitag.net/dump/assets/warranty.webp" alt="" loading="lazy"></div><div style="height:100%;">Lifetime Product Warranty</div></div>
+              <div class="trustSignal"><div><img class="trustSignalIcon" src="https://photos.navitag.net/dump/assets/warranty.webp" alt="" loading="lazy"></div><div style="height:100%;">3-Year Product Warranty</div></div>
               <div class="trustSignal"><div><img class="trustSignalIcon" src="https://photos.navitag.net/dump/assets/engineered-in-usa.webp" alt="" loading="lazy"></div><div style="height:100%;">Engineered in Wyoming, USA</div></div>
             </div>
           </div>

@@ -48,8 +48,8 @@ const certs = [
                 Standard on every device
               </div>
               <div class="mt-3 flex items-baseline gap-2">
-                <span class="text-5xl sm:text-6xl font-semibold tracking-tight leading-none">12</span>
-                <span class="text-lg font-medium text-white/80">months</span>
+                <span class="text-5xl sm:text-6xl font-semibold tracking-tight leading-none">3</span>
+                <span class="text-lg font-medium text-white/80">years</span>
               </div>
               <div class="mt-2 text-xl font-semibold tracking-tight">
                 Full warranty
