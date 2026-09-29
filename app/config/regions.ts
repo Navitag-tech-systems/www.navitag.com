@@ -75,6 +75,7 @@ export interface RegionConfig {
  */
 export const UTILITY_PREFIXES = [
   '/top-up',
+  '/bulk-renew',
   '/plan-checkout',
   '/renew-complete',
   '/checkout/xendit',

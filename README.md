@@ -40,6 +40,7 @@ Front-facing website for the Navitag brand. Nuxt 4 + Tailwind + Pinia, with a gl
   - **Post-success submit rejection**: when `onApprove` fires and we navigate to `/renew-complete`, Vue tears down the PayPal iframe mid-flight and the still-pending `submit()` promise rejects with *"Window closed for postrobot_method before response"*. Catch checks `finalizing.value` and swallows that rejection so it doesn't trip the failure modal after a successful order.
 - **`/renew-complete/:order_id`**: Confirmation page with device info + activation status. Lists EVERY line item (one per device) since 2026-09-24; `/plan-checkout/:cart_id` does the same in its order summary. Both previously showed `items[0]` only while the total covered all devices.
 - ✅ **Bulk renewal SHIPPED 2026-09-24** — `top-up/[imei].vue`, `plan-checkout/[cart_id].vue`, `renew-complete/[order_id].vue`. Proven with a real 2-device GCash order (#76) from localhost before shipping. Note: Xendit always returns to `https://navitag.com/checkout/xendit/success`, so a checkout started on localhost lands on "No checkout in progress" even though the webhook completes the order.
+- **`/bulk-renew` — reminder-email landing page, added 2026-09-29 (PH accounts only).** Target of the "Renew now" button in the renewal-reminder email (API `Cronjob::renewalReminder`, Brevo template 14, Mon/Wed/Fri 10:00 PH). Auth-gated like `/top-up`; lists the owner's devices from `GET /inventory/expiring` (expiring ≤7 days, ticked; lapsed ≤30 days, unticked; non-renewable tiers/models shown but not selectable). One 3/6/12-month choice for all ticked devices, each renewed at its CURRENT tier (no upgrades — those stay on `/top-up/:imei`). Per-row price + new expiration (`renew-preview`, one call per tier), total, one model per cart, cap `bulk_max`. Cart shape identical to `/top-up` (one line item per device with `metadata.imei`/`ref1`) → `/plan-checkout/:cart_id` → Xendit GCash/Maya. `/bulk-renew` is in `UTILITY_PREFIXES`.
 
 ### Physical-Goods Shop Flow
 - **`/shop` and `/distribution`** both 301 to `/shop/product/track-1` (config in `nuxt.config.ts`).
@@ -204,6 +205,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 | `/login`, `/signup`, `/forgot-password` | No | Auth pages |
 | `/my-account` | No | Firebase user info |
 | `/top-up/:imei` | No | Device top-up plan selection (auth gated) |
+| `/bulk-renew` | No | Renew expiring/lapsed devices in one checkout, PH only (auth gated) |
 | `/plan-checkout/:cart_id` | No | Data-plan checkout |
 | `/renew-complete/:order_id` | No | Top-up confirmation |
 | `/shop` | No | → `/shop/product/track-1` (301) |
