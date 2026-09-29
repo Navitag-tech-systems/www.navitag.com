@@ -32,6 +32,33 @@ type Row = {
 const { auth } = useFirebase()
 const basic = useBasicStore()
 const { $fbq } = useNuxtApp()
+const route = useRoute()
+
+// ?for=<firebase uid> -- set by the reminder email to the account it was sent to.
+// A different signed-in account is signed out and the login modal reopened, so
+// nobody renews (or is told "you're all set") from the wrong account. Without the
+// param (a bookmark, a hand-typed URL) any signed-in owner may use the page.
+const intendedUid = computed(() => String(route.query.for || '').trim())
+const wrongAccount = ref(false)
+
+function isWrongAccount(): boolean {
+  const uid = auth.currentUser?.uid
+  return !!intendedUid.value && !!uid && uid !== intendedUid.value
+}
+
+async function signOutWrongAccount() {
+  await basic.logout()
+  // logout() clears the resolved country; the page and the modal both need it.
+  await basic.resolveCountry()
+  loaded.value = false
+  expiring.value = []
+  lapsed.value = []
+  selected.value = new Set()
+  error.value = ''
+  wrongAccount.value = true
+  loading.value = false
+  showLogin.value = true
+}
 
 const loading = ref(true)
 const error = ref('')
@@ -62,7 +89,8 @@ onMounted(async () => {
     locationError.value = true
     return
   }
-  if (basic.user) load()
+  if (basic.user && isWrongAccount()) await signOutWrongAccount()
+  else if (basic.user) load()
   else {
     loading.value = false
     showLogin.value = true
@@ -379,8 +407,13 @@ async function checkout() {
   }
 }
 
-function onLoginSuccess() {
+async function onLoginSuccess() {
   showLogin.value = false
+  if (isWrongAccount()) {
+    await signOutWrongAccount()
+    return
+  }
+  wrongAccount.value = false
   load()
 }
 </script>
@@ -391,6 +424,12 @@ function onLoginSuccess() {
       <div class="mb-8 text-center">
         <h1 class="text-3xl font-extrabold text-gray-950 mb-2">Renew Devices</h1>
         <p class="text-gray-500 text-sm">Renew your expiring devices in one checkout.</p>
+      </div>
+
+      <div v-if="wrongAccount && !isAuthenticated" class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center">
+        <i class="fas fa-user-lock mr-2"></i>
+        This renewal link is for a different Navitag account, so you have been signed out.
+        Please sign in with the account that received the email.
       </div>
 
       <div v-if="authChecked && !isAuthenticated && !locationError" class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 text-sm text-center">
