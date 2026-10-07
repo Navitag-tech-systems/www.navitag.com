@@ -75,6 +75,14 @@ export default defineNuxtConfig({
     '/partner-listing': {
       headers: { 'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet' },
     },
+    // Business statement pay page: one per bill, frames the live Xendit
+    // checkout. Never indexed, never cached (the framed link can change).
+    '/ph/pay/**': {
+      headers: {
+        'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet',
+        'Cache-Control': 'no-store',
+      },
+    },
   },
 
   sitemap: {
@@ -89,6 +97,7 @@ export default defineNuxtConfig({
       '/renew-complete/**',
       '/top-up/**',
       '/partner-listing',
+      '/ph/pay/**',
     ],
     sources: [
       '/api/__sitemap__/articles',

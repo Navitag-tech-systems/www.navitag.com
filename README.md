@@ -132,6 +132,12 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 - ✅ **LIVE on navitag.com** as of commit 5a15ca7. noindex verified four ways on the deployed page; the map renders with real Google tiles.
 - ⚠️ **Local dev cannot load the map** until `http://localhost:3000/*` is added to the key's HTTP-referrer allowlist. `*localhost*` is not a valid Google pattern (a leading `*` is a subdomain wildcard and needs a following dot), and the port is part of the match. Diagnose per-origin with `python scripts/www-v3/check_maps_key_referrers.py` rather than guessing from a blank map.
 
+### Business Statement Pay Page (`/ph/pay/:code`)
+- Short pay URL printed on every Navitag Business statement of account, its PDF and the payment reminders (`navitag.com/ph/pay/<10-char code>`). Built 2026-10-07, **not deployed** — it needs the api's `GET /v1/billing/pay/{code}` live first.
+- The page (`app/pages/ph/pay/[code].vue`, no layout) asks the api during SSR which QR Ph Xendit checkout is live for the bill and shows it in a **full-screen iframe**, so the payer stays on navitag.com. Framing verified 2026-10-07: Xendit sends no `X-Frame-Options` / `frame-ancestors` and does not frame-bust.
+- The api replaces an expired Xendit link on the spot, so a printed URL never goes stale. Paid / nothing due / unknown code / unavailable (e.g. over the PHP 50,000 QR Ph cap) render a status card instead of the frame.
+- In `UTILITY_PREFIXES` (a payer abroad must not be region-redirected off the link), `noindex` + `Cache-Control: no-store` via `routeRules`, excluded from the sitemap.
+
 ### TODO
 
 #### Storefront
@@ -216,6 +222,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 | `/test-products` | No | Medusa product test page (dev) |
 | `/links` | No | → `https://track.navitag.com/signup` |
 | `/partner-listing` | **No — 4 layers** | Retailer self-listing form → `POST /v1/partner-listing` |
+| `/ph/pay/:code` | No | Business statement pay page: full-screen iframe of the live Xendit QR Ph checkout ← `GET /v1/billing/pay/{code}` |
 | `/*` (catch-all) | No | Custom 404 |
 
 ---
