@@ -2,16 +2,18 @@
 import { UNIFIED_API_URL } from '~/variables'
 
 // Short pay URL printed on every Navitag Business statement, PDF and reminder:
-// navitag.com/ph/pay/<code>. The api (GET /billing/pay/{code}, public) says
+// navitag.com/p/<code>, code = invoice number without zeros and dashes + 3
+// random letters (026-1100000023 -> 261123jht). /ph/pay/<code> is an alias (the
+// first format; links already sent keep working). The api (GET /billing/pay/{code}, public) says
 // which QR Ph Xendit checkout is live for that bill -- replacing an expired one
 // on the spot -- and this page shows it in a full-screen iframe, so the payer
 // stays on navitag.com and the printed URL never goes stale.
 //
 // Fetched during SSR (useFetch), so the frame is in the first HTML response and
-// hydration reuses the payload instead of asking the api again. /ph/pay is in
-// UTILITY_PREFIXES: a payer abroad must not be region-redirected off the link.
+// hydration reuses the payload instead of asking the api again. /p and /ph/pay
+// are in UTILITY_PREFIXES: a payer abroad must not be region-redirected off the link.
 
-definePageMeta({ layout: false })
+definePageMeta({ layout: false, alias: ['/ph/pay/:code'] })
 useHead({ title: 'Navitag - Pay Statement' })
 useSeoMeta({ robots: 'noindex, nofollow' })
 

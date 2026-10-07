@@ -92,9 +92,10 @@ export const UTILITY_PREFIXES = [
   // break that link for everyone the sales team already sent it to. The form
   // reads the visitor's country itself, to pick the secondary label language.
   '/partner-listing',
-  // Short pay URL on business statements (pages/ph/pay/[code].vue). Under /ph
-  // because the bills are PH, but a payer abroad must still land on the
-  // checkout, not be moved to their own region's site.
+  // Short pay URL on business statements (pages/p/[code].vue, alias /ph/pay).
+  // A payer abroad must still land on the checkout, not be moved to their own
+  // region's site.
+  '/p',
   '/ph/pay',
 ]
 

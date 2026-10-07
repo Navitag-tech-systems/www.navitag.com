@@ -77,6 +77,12 @@ export default defineNuxtConfig({
     },
     // Business statement pay page: one per bill, frames the live Xendit
     // checkout. Never indexed, never cached (the framed link can change).
+    '/p/**': {
+      headers: {
+        'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet',
+        'Cache-Control': 'no-store',
+      },
+    },
     '/ph/pay/**': {
       headers: {
         'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet',
@@ -97,6 +103,7 @@ export default defineNuxtConfig({
       '/renew-complete/**',
       '/top-up/**',
       '/partner-listing',
+      '/p/**',
       '/ph/pay/**',
     ],
     sources: [
