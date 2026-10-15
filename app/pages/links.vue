@@ -46,7 +46,7 @@ const region = computed(() => resolveRegionFromCountry(basic.country))
 const isPh = computed(() => region.value?.code === 'PH')
 
 // Web-app button is a secondary option next to a store button, but the sole
-// primary CTA on no-app devices (PH desktop — non-PH desktop is redirected).
+// primary CTA on no-app devices (PH desktop).
 const webAppLabel = computed(() => (appCapable.value ? 'Or use the web app' : 'Open the web app'))
 
 // ── Secondary links ──────────────────────────────────────────────────
@@ -57,16 +57,10 @@ interface HubLink {
   href?: string // external URL / scheme
 }
 
-const links = computed<HubLink[]>(() => {
-  if (isPh.value) {
-    return [
-      { label: 'Contact PH team', icon: 'fas fa-headset', to: '/ph/contact' },
-    ]
-  }
-  return [
-    { label: 'Contact us', icon: 'fas fa-envelope', to: '/contact' },
-  ]
-})
+// The hub only ever renders for PH visitors (everyone else is redirected).
+const links: HubLink[] = [
+  { label: 'Contact PH team', icon: 'fas fa-headset', to: '/ph/contact' },
+]
 
 // ── Boot: detect client, resolve country, maybe redirect ─────────────
 onMounted(async () => {
@@ -74,10 +68,10 @@ onMounted(async () => {
   // Country-by-IP via the shared resolver (deduped with AppBootLoader's call).
   await basic.resolveCountry()
 
-  // Non-PH visitors on a no-app device (desktop / other) have nothing to
-  // install and no region-specific content here → send them straight to the
-  // web app. Runs while the boot spinner is still up, so there's no hub flash.
-  if (!appCapable.value && !isPh.value) {
+  // The hub is PH-only. Non-PH visitors on ANY device (store buttons
+  // included) go straight to the web app. The template is gated on isPh, so
+  // nothing renders for them while the navigation is in flight.
+  if (!isPh.value) {
     await navigateTo(WEB_APP_URL, { external: true })
   }
 })
@@ -90,12 +84,12 @@ onMounted(async () => {
       class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(0,118,245,0.10),_transparent_55%)]"
     ></div>
 
-    <!-- Content is gated on country resolution: nothing renders until the
-         region (PH vs. rest-of-world) is known, so the region-specific card
-         and links never flash the wrong variant. The boot spinner covers this
+    <!-- Content is gated on country resolution AND PH: nothing renders until
+         the region is known, and non-PH visitors never see the hub (they are
+         redirected to the web app in onMounted). The boot spinner covers the
          gap until countryResolved flips true. -->
     <div
-      v-if="basic.countryResolved"
+      v-if="basic.countryResolved && isPh"
       class="relative mx-auto flex min-h-screen w-full max-w-md flex-col items-center px-5 py-12 sm:py-16"
     >
       <!-- Brand -->
@@ -107,9 +101,8 @@ onMounted(async () => {
         Never Lose What Matters.
       </p>
 
-      <!-- PH-only: Home Service Installation via Viber -->
+      <!-- Home Service Installation via Viber -->
       <a
-        v-if="isPh"
         :href="VIBER_URL"
         class="group mt-8 block w-full rounded-2xl border border-[#7360F2]/25 bg-white p-4 shadow-sm ring-1 ring-[#7360F2]/5 transition hover:border-[#7360F2]/50 hover:shadow-md"
       >
@@ -145,9 +138,9 @@ onMounted(async () => {
           <span class="text-[15px] font-semibold tracking-tight">Get it on Google Play</span>
         </a>
 
-        <!-- iOS + PH → App Store (live in the PH storefront) -->
+        <!-- iOS → App Store (live in the PH storefront) -->
         <a
-          v-else-if="isIos && isPh"
+          v-else-if="isIos"
           :href="APP_STORE_URL"
           rel="noopener"
           class="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-gray-950 px-5 py-4 text-white shadow-sm transition hover:bg-black active:scale-[0.99]"
@@ -155,19 +148,6 @@ onMounted(async () => {
           <i class="fab fa-apple text-lg"></i>
           <span class="text-[15px] font-semibold tracking-tight">Download on the App Store</span>
         </a>
-
-        <!-- iOS elsewhere → not yet on sale in their storefront -->
-        <div
-          v-else-if="isIos"
-          aria-disabled="true"
-          class="flex w-full cursor-not-allowed select-none items-center justify-center gap-2.5 rounded-2xl bg-gray-100 px-5 py-4 text-gray-400 ring-1 ring-gray-200"
-        >
-          <i class="fab fa-apple text-lg"></i>
-          <span class="text-[15px] font-semibold tracking-tight">Download on the App Store</span>
-          <span class="ml-0.5 rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-            Launching soon
-          </span>
-        </div>
 
         <!-- Web app (secondary on app devices, primary on no-app / PH desktop) -->
         <a

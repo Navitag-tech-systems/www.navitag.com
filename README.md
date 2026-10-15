@@ -220,7 +220,7 @@ Read this before adding or moving Meta events. Full event inventory: [`META_EVEN
 | `/shop/checkout/[cart_id]` | No | Physical-goods checkout (gated by referrer) |
 | `/shop/order-complete/[order_id]` | No | Physical-order receipt |
 | `/test-products` | No | Medusa product test page (dev) |
-| `/links` | No | → `https://track.navitag.com/signup` |
+| `/links` | No | PH-only link hub (Play Store / App Store / web app / Viber). Non-PH visitors on any device → `https://track.navitag.com/signup` (2026-10-15) |
 | `/partner-listing` | **No — 4 layers** | Retailer self-listing form → `POST /v1/partner-listing` |
 | `/ph/pay/:code` | No | Business statement pay page: full-screen iframe of the live Xendit QR Ph checkout ← `GET /v1/billing/pay/{code}` |
 | `/*` (catch-all) | No | Custom 404 |
